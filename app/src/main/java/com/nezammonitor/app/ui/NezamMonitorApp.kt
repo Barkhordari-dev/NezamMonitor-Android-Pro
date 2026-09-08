@@ -8,8 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,8 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.room.Room
 import com.nezammonitor.app.data.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,10 +28,9 @@ fun NezamMonitorApp() {
     var searchQuery by remember { mutableStateOf("") }
     var importResult by remember { mutableStateOf<ImportResult?>(null) }
     
-    // Import launcher
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
+    ) { uri ->
         uri?.let {
             val engine = ImportEngine(context)
             importResult = kotlinx.coroutines.runBlocking {
@@ -47,41 +42,31 @@ fun NezamMonitorApp() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("سیستم مانیتور نظم مهندسی", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                actions = {
-                    IconButton(onClick = { 
-                        importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = "ورود اطلاعات")
-                    }
-                }
+                title = { Text("سیستم مانیتور نظم مهندسی", fontWeight = FontWeight.Bold) }
             )
         },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.List, contentDescription = null) },
+                    icon = { Text("📋") },
                     label = { Text("پرونده‌ها") },
                     selected = currentScreen == "cases",
                     onClick = { currentScreen = "cases" }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    icon = { Text("👷") },
                     label = { Text("مهندسین") },
                     selected = currentScreen == "engineers",
                     onClick = { currentScreen = "engineers" }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
+                    icon = { Text("💰") },
                     label = { Text("حق‌الزحمه") },
                     selected = currentScreen == "fees",
                     onClick = { currentScreen = "fees" }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Create, contentDescription = null) },
+                    icon = { Text("📄") },
                     label = { Text("گزارش‌ها") },
                     selected = currentScreen == "reports",
                     onClick = { currentScreen = "reports" }
@@ -94,7 +79,6 @@ fun NezamMonitorApp() {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Search bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -102,40 +86,27 @@ fun NezamMonitorApp() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true
             )
             
-            // Import result message
             importResult?.let { result ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (result.success) 
-                            MaterialTheme.colorScheme.primaryContainer 
-                        else 
-                            MaterialTheme.colorScheme.errorContainer
-                    )
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = result.message,
-                        modifier = Modifier.padding(16.dp),
-                        color = if (result.success) 
-                            MaterialTheme.colorScheme.onPrimaryContainer 
-                        else 
-                            MaterialTheme.colorScheme.onErrorContainer
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
             
-            // Content based on current screen
             when (currentScreen) {
                 "cases" -> CasesScreen(dao, searchQuery)
-                "engineers" -> EngineersScreen(dao, searchQuery)
-                "fees" -> FeesScreen(dao, searchQuery)
-                "reports" -> ReportsScreen(dao, searchQuery)
+                "engineers" -> EngineersScreen(dao)
+                "fees" -> FeesScreen(dao)
+                "reports" -> ReportsScreen(dao)
             }
         }
     }
@@ -155,31 +126,23 @@ fun CasesScreen(dao: NezamDao, searchQuery: String) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(cases) { case ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "پرونده: ${case.caseNumber}",
-                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(text = "مالک: ${case.owner}")
                     Text(text = "آدرس: ${case.serial}")
-                    
-                    // Phone number - clickable
                     if (case.ownerMobile.isNotBlank()) {
                         Text(
                             text = "تلفن: ${case.ownerMobile}",
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable {
-                                val intent = Intent(Intent.ACTION_DIAL).apply {
-                                    data = Uri.parse("tel:${case.ownerMobile}")
-                                }
-                                // context.startActivity(intent)
-                            },
-                            color = MaterialTheme.colorScheme.primary
+                                val intent = Intent(Intent.ACTION_DIAL)
+                                intent.data = Uri.parse("tel:${case.ownerMobile}")
+                                // context.startActivity(intent) // Will work on device
+                            }
                         )
                     }
                 }
@@ -189,7 +152,7 @@ fun CasesScreen(dao: NezamDao, searchQuery: String) {
 }
 
 @Composable
-fun EngineersScreen(dao: NezamDao, searchQuery: String) {
+fun EngineersScreen(dao: NezamDao) {
     val engineers by dao.getAllEngineers().collectAsState(initial = emptyList())
     
     LazyColumn(
@@ -198,16 +161,9 @@ fun EngineersScreen(dao: NezamDao, searchQuery: String) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(engineers) { engineer ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = engineer.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = engineer.name, fontWeight = FontWeight.Bold)
                     Text(text = "رشته: ${engineer.discipline}")
                     Text(text = "نقش: ${engineer.role}")
                 }
@@ -217,7 +173,7 @@ fun EngineersScreen(dao: NezamDao, searchQuery: String) {
 }
 
 @Composable
-fun FeesScreen(dao: NezamDao, searchQuery: String) {
+fun FeesScreen(dao: NezamDao) {
     val fees by dao.getAllFees().collectAsState(initial = emptyList())
     
     LazyColumn(
@@ -226,16 +182,9 @@ fun FeesScreen(dao: NezamDao, searchQuery: String) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(fees) { fee ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "پرونده: ${fee.caseNumber}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "پرونده: ${fee.caseNumber}", fontWeight = FontWeight.Bold)
                     Text(text = "مبلغ: ${fee.amount}")
                     Text(text = "مرحله: ${fee.stage}")
                 }
@@ -245,7 +194,7 @@ fun FeesScreen(dao: NezamDao, searchQuery: String) {
 }
 
 @Composable
-fun ReportsScreen(dao: NezamDao, searchQuery: String) {
+fun ReportsScreen(dao: NezamDao) {
     val reports by dao.getAllReports().collectAsState(initial = emptyList())
     
     LazyColumn(
@@ -254,16 +203,9 @@ fun ReportsScreen(dao: NezamDao, searchQuery: String) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(reports) { report ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "گزارش: ${report.reportType}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "گزارش: ${report.reportType}", fontWeight = FontWeight.Bold)
                     Text(text = "مرحله: ${report.stage}")
                     Text(text = "تاریخ بازدید: ${report.visitDate}")
                 }
