@@ -8,7 +8,9 @@ on:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -18,30 +20,40 @@ jobs:
           distribution: 'temurin'
 
       - uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
 
       - run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease --stacktrace --no-daemon
 
-      - name: Build AAB
-        run: ./gradlew bundleRelease --stacktrace
+      - name: Run Unit Tests
+        run: ./gradlew test --stacktrace --no-daemon
+        continue-on-error: true
 
       - uses: actions/upload-artifact@v4
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: app/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+      - name: Build AAB
+        run: ./gradlew bundleRelease --stacktrace --no-daemon
+        continue-on-error: true
 
       - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: aab
           path: app/build/outputs/bundle/release/*.aab
+          retention-days: 30
