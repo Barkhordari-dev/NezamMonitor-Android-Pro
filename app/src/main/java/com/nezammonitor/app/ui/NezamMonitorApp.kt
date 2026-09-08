@@ -13,7 +13,7 @@ import com.nezammonitor.app.data.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NezamMonitorApp() {
-    val db = remember { NezamDatabase.getDatabase(getApplicationContext()) }
+    val db = remember { NezamDatabase.INSTANCE }
     val dao = db.nezamDao()
 
     var currentScreen by remember { mutableStateOf("cases") }
@@ -163,9 +163,4 @@ fun ReportsScreen(dao: NezamDao) {
             }
         }
     }
-}
-
-// Helper to get application context
-private fun getApplicationContext(): android.content.Context {
-    return androidx.core.content.ContextCompat.getMainExecutor(android.app.Application()).context
 }
