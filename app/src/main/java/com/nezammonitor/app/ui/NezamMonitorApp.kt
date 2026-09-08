@@ -1,18 +1,11 @@
 package com.nezammonitor.app.ui
 
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nezammonitor.app.data.*
@@ -20,25 +13,12 @@ import com.nezammonitor.app.data.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NezamMonitorApp() {
-    val context = LocalContext.current
-    val db = remember { NezamDatabase.getDatabase(context) }
+    val db = remember { NezamDatabase.getDatabase(getApplicationContext()) }
     val dao = db.nezamDao()
-    
+
     var currentScreen by remember { mutableStateOf("cases") }
     var searchQuery by remember { mutableStateOf("") }
-    var importResult by remember { mutableStateOf<ImportResult?>(null) }
-    
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let {
-            val engine = ImportEngine(context)
-            importResult = kotlinx.coroutines.runBlocking {
-                engine.importFromUri(it)
-            }
-        }
-    }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -48,36 +28,36 @@ fun NezamMonitorApp() {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    icon = { Text("📋") },
-                    label = { Text("پرونده‌ها") },
                     selected = currentScreen == "cases",
-                    onClick = { currentScreen = "cases" }
+                    onClick = { currentScreen = "cases" },
+                    icon = { Text("📋") },
+                    label = { Text("پرونده‌ها") }
                 )
                 NavigationBarItem(
-                    icon = { Text("👷") },
-                    label = { Text("مهندسین") },
                     selected = currentScreen == "engineers",
-                    onClick = { currentScreen = "engineers" }
+                    onClick = { currentScreen = "engineers" },
+                    icon = { Text("👷") },
+                    label = { Text("مهندسین") }
                 )
                 NavigationBarItem(
-                    icon = { Text("💰") },
-                    label = { Text("حق‌الزحمه") },
                     selected = currentScreen == "fees",
-                    onClick = { currentScreen = "fees" }
+                    onClick = { currentScreen = "fees" },
+                    icon = { Text("💰") },
+                    label = { Text("حق‌الزحمه") }
                 )
                 NavigationBarItem(
-                    icon = { Text("📄") },
-                    label = { Text("گزارش‌ها") },
                     selected = currentScreen == "reports",
-                    onClick = { currentScreen = "reports" }
+                    onClick = { currentScreen = "reports" },
+                    icon = { Text("📄") },
+                    label = { Text("گزارش‌ها") }
                 )
             }
         }
-    ) { paddingValues ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
         ) {
             OutlinedTextField(
                 value = searchQuery,
@@ -88,20 +68,6 @@ fun NezamMonitorApp() {
                     .padding(16.dp),
                 singleLine = true
             )
-            
-            importResult?.let { result ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = result.message,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
-            
             when (currentScreen) {
                 "cases" -> CasesScreen(dao, searchQuery)
                 "engineers" -> EngineersScreen(dao)
@@ -119,7 +85,6 @@ fun CasesScreen(dao: NezamDao, searchQuery: String) {
     } else {
         dao.searchCases(searchQuery).collectAsState(initial = emptyList())
     }
-    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -128,22 +93,11 @@ fun CasesScreen(dao: NezamDao, searchQuery: String) {
         items(cases) { case ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "پرونده: ${case.caseNumber}",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(text = "مالک: ${case.owner}")
-                    Text(text = "آدرس: ${case.serial}")
+                    Text("پرونده: ${case.caseNumber}", fontWeight = FontWeight.Bold)
+                    Text("مالک: ${case.owner}")
+                    Text("آدرس: ${case.serial}")
                     if (case.ownerMobile.isNotBlank()) {
-                        Text(
-                            text = "تلفن: ${case.ownerMobile}",
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable {
-                                val intent = Intent(Intent.ACTION_DIAL)
-                                intent.data = Uri.parse("tel:${case.ownerMobile}")
-                                // context.startActivity(intent) // Will work on device
-                            }
-                        )
+                        Text("تلفن: ${case.ownerMobile}", color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -154,18 +108,17 @@ fun CasesScreen(dao: NezamDao, searchQuery: String) {
 @Composable
 fun EngineersScreen(dao: NezamDao) {
     val engineers by dao.getAllEngineers().collectAsState(initial = emptyList())
-    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(engineers) { engineer ->
+        items(engineers) { eng ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = engineer.name, fontWeight = FontWeight.Bold)
-                    Text(text = "رشته: ${engineer.discipline}")
-                    Text(text = "نقش: ${engineer.role}")
+                    Text(eng.name, fontWeight = FontWeight.Bold)
+                    Text("رشته: ${eng.discipline}")
+                    Text("نقش: ${eng.role}")
                 }
             }
         }
@@ -175,7 +128,6 @@ fun EngineersScreen(dao: NezamDao) {
 @Composable
 fun FeesScreen(dao: NezamDao) {
     val fees by dao.getAllFees().collectAsState(initial = emptyList())
-    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -184,9 +136,9 @@ fun FeesScreen(dao: NezamDao) {
         items(fees) { fee ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "پرونده: ${fee.caseNumber}", fontWeight = FontWeight.Bold)
-                    Text(text = "مبلغ: ${fee.amount}")
-                    Text(text = "مرحله: ${fee.stage}")
+                    Text("پرونده: ${fee.caseNumber}", fontWeight = FontWeight.Bold)
+                    Text("مبلغ: ${fee.amount}")
+                    Text("مرحله: ${fee.stage}")
                 }
             }
         }
@@ -196,20 +148,24 @@ fun FeesScreen(dao: NezamDao) {
 @Composable
 fun ReportsScreen(dao: NezamDao) {
     val reports by dao.getAllReports().collectAsState(initial = emptyList())
-    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(reports) { report ->
+        items(reports) { r ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "گزارش: ${report.reportType}", fontWeight = FontWeight.Bold)
-                    Text(text = "مرحله: ${report.stage}")
-                    Text(text = "تاریخ بازدید: ${report.visitDate}")
+                    Text("گزارش: ${r.reportType}", fontWeight = FontWeight.Bold)
+                    Text("مرحله: ${r.stage}")
+                    Text("تاریخ: ${r.visitDate}")
                 }
             }
         }
     }
+}
+
+// Helper to get application context
+private fun getApplicationContext(): android.content.Context {
+    return androidx.core.content.ContextCompat.getMainExecutor(android.app.Application()).context
 }
