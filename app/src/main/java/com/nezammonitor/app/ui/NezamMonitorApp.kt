@@ -55,7 +55,7 @@ fun NezamMonitorApp() {
                     IconButton(onClick = { 
                         importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
                     }) {
-                        Icon(Icons.Default.FileUpload, contentDescription = "ورود اطلاعات")
+                        Icon(Icons.Default.Upload, contentDescription = "ورود اطلاعات")
                     }
                 }
             )
@@ -69,19 +69,19 @@ fun NezamMonitorApp() {
                     onClick = { currentScreen = "cases" }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Engineering, contentDescription = null) },
+                    icon = { Icon(Icons.Default.Person, contentDescription = null) },
                     label = { Text("مهندسین") },
                     selected = currentScreen == "engineers",
                     onClick = { currentScreen = "engineers" }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.AttachMoney, contentDescription = null) },
+                    icon = { Icon(Icons.Default.Payments, contentDescription = null) },
                     label = { Text("حق‌الزحمه") },
                     selected = currentScreen == "fees",
                     onClick = { currentScreen = "fees" }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Description, contentDescription = null) },
+                    icon = { Icon(Icons.Default.Article, contentDescription = null) },
                     label = { Text("گزارش‌ها") },
                     selected = currentScreen == "reports",
                     onClick = { currentScreen = "reports" }
