@@ -11,10 +11,7 @@ import com.nezammonitor.app.data.NezamDatabase
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Initialize database early (no LocalContext in Composable)
         NezamDatabase.getDatabase(applicationContext)
-        
         setContent {
             MaterialTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
