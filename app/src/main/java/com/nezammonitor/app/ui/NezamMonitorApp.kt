@@ -2,7 +2,6 @@ package com.nezammonitor.app.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +27,7 @@ import com.nezammonitor.app.ui.screens.reports.ReportsScreen
 import com.nezammonitor.app.ui.screens.settings.SettingsScreen
 import com.nezammonitor.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
+import java.net.URLDecoder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,37 +35,38 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var currentTitle by remember { mutableStateOf("خانه") }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    "سیستم مانیتور",
-                    modifier = Modifier.padding(16.dp),
+                    "مانیتور نظام مهندسی",
+                    modifier = Modifier.padding(horizontal = 16.dp),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+                    fontSize = 18.sp
                 )
                 Text(
-                    "نظام مهندسی",
+                    "مهندس برخورداری",
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    fontSize = 14.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.height(8.dp))
                 Divider()
+                Spacer(modifier = Modifier.height(4.dp))
                 drawerItems.forEach { screen ->
                     NavigationDrawerItem(
-                        icon = { Text(screen.icon) },
-                        label = { Text(screen.title) },
+                        icon = { Text(screen.icon, fontSize = 18.sp) },
+                        label = { Text(screen.title, fontSize = 14.sp) },
                         selected = false,
                         onClick = {
                             scope.launch { drawerState.close() }
                             navController.navigate(screen.route) {
                                 popUpTo(Screen.Home.route) { inclusive = false }
+                                launchSingleTop = true
                             }
-                            currentTitle = screen.title
                         }
                     )
                 }
@@ -77,8 +78,8 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 TopAppBar(
                     title = {
                         Column {
-                            Text("سیستم مانیتور نظام مهندسی", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text("ساخته شده توسط مهندس برخورداری", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("مانیتور نظام مهندسی", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("ساخته شده توسط مهندس برخورداری", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     navigationIcon = {
@@ -97,7 +98,8 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 composable(Screen.Home.route) {
                     HomeScreen(
                         viewModel = viewModel,
-                        onNavigateToImport = { navController.navigate(Screen.Import.route) }
+                        onNavigateToImport = { navController.navigate(Screen.Import.route) },
+                        onNavigateToCases = { navController.navigate(Screen.Cases.route) }
                     )
                 }
                 composable(Screen.Cases.route) {
@@ -112,7 +114,12 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                     route = Screen.CaseDetail.route,
                     arguments = listOf(navArgument("caseNumber") { type = NavType.StringType })
                 ) { backStackEntry ->
-                    val caseNumber = backStackEntry.arguments?.getString("caseNumber") ?: ""
+                    val encoded = backStackEntry.arguments?.getString("caseNumber") ?: ""
+                    val caseNumber = try {
+                        URLDecoder.decode(encoded, "UTF-8")
+                    } catch (e: Exception) {
+                        encoded
+                    }
                     LaunchedEffect(caseNumber) { viewModel.loadCaseDetail(caseNumber) }
                     CaseDetailScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
@@ -129,12 +136,13 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                     FollowUpScreen(viewModel = viewModel)
                 }
                 composable(Screen.Settings.route) {
-                    SettingsScreen()
+                    SettingsScreen(viewModel = viewModel)
                 }
                 composable(Screen.Import.route) {
                     HomeScreen(
                         viewModel = viewModel,
-                        onNavigateToImport = { }
+                        onNavigateToImport = { },
+                        onNavigateToCases = { }
                     )
                 }
             }

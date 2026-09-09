@@ -25,13 +25,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
+fun HomeScreen(
+    viewModel: MainViewModel,
+    onNavigateToImport: () -> Unit,
+    onNavigateToCases: () -> Unit = {}
+) {
     val context = LocalContext.current
     val cases by viewModel.cases.collectAsState()
     val engineers by viewModel.engineers.collectAsState()
     val fees by viewModel.fees.collectAsState()
     val reports by viewModel.reports.collectAsState()
     val importResult by viewModel.importResult.collectAsState()
+    val isImporting by viewModel.isImporting.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -40,11 +45,13 @@ fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
     ) { uri ->
         uri?.let {
             coroutineScope.launch {
+                viewModel.setImporting(true)
                 val engine = ImportEngine(context)
                 val result = withContext(Dispatchers.IO) {
                     engine.importFromUri(it)
                 }
                 viewModel.importData(result)
+                viewModel.setImporting(false)
             }
         }
     }
@@ -55,67 +62,128 @@ fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Import button
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isImporting) MaterialTheme.colorScheme.surfaceVariant
+                    else MaterialTheme.colorScheme.primary
+                )
             ) {
                 Column(
                     modifier = Modifier
-                        .clickable {
-                            importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+                        .clickable(enabled = !isImporting) {
+                            importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
                         }
-                        .padding(16.dp),
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("📥", fontSize = 32.sp)
+                    Text(if (isImporting) "⏳" else "📥", fontSize = 32.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("ورود اطلاعات", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
-                    Text("از ویندوز", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(
+                        if (isImporting) "در حال وارد کردن..." else "ورود اطلاعات",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = if (isImporting) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onPrimary
+                    )
+                    if (!isImporting) {
+                        Text("از ویندوز", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
             }
         }
 
+        // Import result
         if (importResult != null) {
-            item {
+            item(span = { GridItemSpan(2) }) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = if (importResult?.success == true)
                             MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.errorContainer
                     )
                 ) {
-                    Text(
-                        text = importResult?.message ?: "",
-                        modifier = Modifier.padding(12.dp),
-                        fontSize = 12.sp
-                    )
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = if (importResult?.success == true) "✅ ${importResult?.message}" else "❌ ${importResult?.message}",
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(onClick = { viewModel.clearImportResult() }) {
+                            Text("بستن")
+                        }
+                    }
                 }
             }
         }
 
-        item { StatCard("📋 پرونده‌ها", cases.size, MaterialTheme.colorScheme.primary) }
-        item { StatCard("👷 مهندسین", engineers.size, MaterialTheme.colorScheme.secondary) }
-        item { StatCard("💰 حق‌الزحمه", fees.size, MaterialTheme.colorScheme.tertiary) }
-        item { StatCard("📄 گزارش‌ها", reports.size, MaterialTheme.colorScheme.error) }
-    }
-}
-
-@Composable
-fun StatCard(title: String, count: Int, color: androidx.compose.ui.graphics.Color) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("$count", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = color)
+        // Stat cards - clickable
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToCases() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("📋", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("پرونده\u200Cها", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("${cases.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("👷", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("مهندسین", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("${engineers.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("💰", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("حق\u200Cالزحمه", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("${fees.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("📄", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("گزارش\u200Cها", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("${reports.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                }
+            }
         }
     }
 }

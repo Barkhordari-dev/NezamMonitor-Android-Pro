@@ -59,25 +59,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadAllData() {
         viewModelScope.launch {
-            dao.getAllCases().collect { _cases.value = it }
+            dao.getAllCases().distinctUntilChanged().collect { _cases.value = it }
         }
         viewModelScope.launch {
-            dao.getAllEngineers().collect { _engineers.value = it }
+            dao.getAllEngineers().distinctUntilChanged().collect { _engineers.value = it }
         }
         viewModelScope.launch {
-            dao.getAllFees().collect { _fees.value = it }
+            dao.getAllFees().distinctUntilChanged().collect { _fees.value = it }
         }
         viewModelScope.launch {
-            dao.getAllReports().collect { _reports.value = it }
+            dao.getAllReports().distinctUntilChanged().collect { _reports.value = it }
         }
         viewModelScope.launch {
-            dao.getAllFollowUpEdits().collect { _followUpEdits.value = it }
+            dao.getAllFollowUpEdits().distinctUntilChanged().collect { _followUpEdits.value = it }
         }
     }
 
     fun loadCaseDetail(caseNumber: String) {
         viewModelScope.launch {
-            _caseDetail.value = cases.value.find { it.caseNumber == caseNumber }
+            val case = _cases.value.find { it.caseNumber == caseNumber }
+            _caseDetail.value = case
             _caseSpec.value = dao.getSpecification(caseNumber)
             _caseEngineers.value = dao.getEngineersForCase(caseNumber)
             _caseFees.value = dao.getFeesForCase(caseNumber)
@@ -87,7 +88,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun searchCases(query: String) {
         viewModelScope.launch {
-            dao.searchCases(query).collect { _cases.value = it }
+            if (query.isBlank()) {
+                dao.getAllCases().first().let { _cases.value = it }
+            } else {
+                dao.searchCases(query).first().let { _cases.value = it }
+            }
         }
     }
 
@@ -98,6 +103,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearImportResult() {
         _importResult.value = null
+    }
+
+    fun setImporting(value: Boolean) {
+        _isImporting.value = value
     }
 
     fun saveFollowUpEdit(edit: FollowUpEditEntity) {

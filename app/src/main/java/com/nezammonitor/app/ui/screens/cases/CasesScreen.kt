@@ -22,57 +22,100 @@ import com.nezammonitor.app.viewmodel.MainViewModel
 @Composable
 fun CasesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit) {
     val cases by viewModel.cases.collectAsState()
+    val specs by remember { mutableStateOf(listOf<com.nezammonitor.app.data.SpecificationEntity>()) }
     var searchQuery by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    val filtered = remember(cases, searchQuery) {
+        if (searchQuery.isBlank()) cases
+        else cases.filter {
+            it.caseNumber.contains(searchQuery, true) ||
+            it.owner.contains(searchQuery, true) ||
+            it.ownerMobile.contains(searchQuery, true) ||
+            it.serial.contains(searchQuery, true) ||
+            it.office.contains(searchQuery, true)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search bar
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = {
-                searchQuery = it
-                viewModel.searchCases(it)
-            },
+            onValueChange = { searchQuery = it },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            label = { Text("جستجو...") },
+            label = { Text("جستجوی شماره پرونده / مالک / موبایل...") },
             singleLine = true
         )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+            Text(
+                "${filtered.size} پرونده",
+                modifier = Modifier.padding(12.dp),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(cases, key = { it.caseNumber }) { case ->
+            items(filtered, key = { it.caseNumber }) { case ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onCaseClick(case.caseNumber) }
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(case.caseNumber, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(case.caseNumber, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text("مالک: ${case.owner}", fontSize = 14.sp)
+                            }
                             if (case.ownerMobile.isNotBlank()) {
-                                Icon(
-                                    Icons.Default.Phone,
-                                    contentDescription = "تماس",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.clickable {
-                                        val intent = Intent(Intent.ACTION_DIAL)
-                                        intent.data = Uri.parse("tel:${case.ownerMobile}")
-                                    }
-                                )
+                                IconButton(onClick = {
+                                    val cleaned = case.ownerMobile.replace(Regex("[^0-9+]"), "")
+                                    val intent = Intent(Intent.ACTION_DIAL)
+                                    intent.data = Uri.parse("tel:$cleaned")
+                                    context.startActivity(intent)
+                                }) {
+                                    Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary)
+                                }
                             }
                         }
+                        
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("مالک: ${case.owner}", fontSize = 14.sp)
-                        Text("دفتر: ${case.office}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("مسئولیت: ${case.responsibility}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        
+                        if (case.ownerMobile.isNotBlank()) {
+                            Text("همراه: ${case.ownerMobile}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (case.serial.isNotBlank()) {
+                            Text("سریال: ${case.serial}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            if (case.office.isNotBlank()) {
+                                Text("دفتر: ${case.office}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (case.responsibility.isNotBlank()) {
+                                Text(case.responsibility, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
             }

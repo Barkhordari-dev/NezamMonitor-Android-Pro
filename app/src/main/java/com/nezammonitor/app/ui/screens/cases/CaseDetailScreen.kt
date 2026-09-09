@@ -29,10 +29,26 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val reports by viewModel.caseReports.collectAsState()
     val context = LocalContext.current
 
+    fun dialPhone(number: String) {
+        if (number.isNotBlank()) {
+            val cleaned = number.replace(Regex("[^0-9+]"), "")
+            val intent = Intent(Intent.ACTION_DIAL)
+            intent.data = Uri.parse("tel:$cleaned")
+            context.startActivity(intent)
+        }
+    }
+
+    if (case == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(case?.caseNumber ?: "جزئیات پرونده") },
+                title = { Text(case?.caseNumber ?: "جزئیات پرونده", fontSize = 16.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "بازگشت")
@@ -57,35 +73,58 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         DetailRow("شماره پرونده", case?.caseNumber ?: "")
                         DetailRow("سریال", case?.serial ?: "")
                         DetailRow("مالک", case?.owner ?: "")
-                        DetailRow("همراه", case?.ownerMobile ?: "")
-                        DetailRow("آدرس", spec?.address ?: "")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("همراه: ${case?.ownerMobile ?: ""}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (case?.ownerMobile?.isNotBlank() == true) {
+                                Icon(
+                                    Icons.Default.Phone,
+                                    contentDescription = "تماس",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable { dialPhone(case?.ownerMobile ?: "") }
+                                )
+                            }
+                        }
                         DetailRow("دفتر", case?.office ?: "")
                         DetailRow("مسئولیت", case?.responsibility ?: "")
                         DetailRow("تاریخ کسر ظرفیت", case?.capacityDate ?: "")
+                        DetailRow("تاریخ گزارش ۱", case?.reportDate1 ?: "")
+                        DetailRow("تاریخ گزارش ۲", case?.reportDate2 ?: "")
+                        DetailRow("تاریخ گزارش ۳", case?.reportDate3 ?: "")
                     }
                 }
             }
 
             // Building Specs
-            item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("مشخصات ساختمان", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        DetailRow("گروه ساختمانی", spec?.buildingGroup ?: "")
-                        DetailRow("کد نوسازی", spec?.renovationCode ?: "")
-                        DetailRow("نوع دستور", spec?.planInstructionType ?: "")
-                        DetailRow("شماره دستور", spec?.planInstructionNo ?: "")
-                        DetailRow("تاریخ دستور", spec?.planInstructionDate ?: "")
-                        DetailRow("نوع سازه", spec?.structureType ?: "")
-                        DetailRow("مساحت زمین", spec?.landArea ?: "")
-                        DetailRow("متراژ پاراف", spec?.parafArea ?: "")
-                        DetailRow("عنوان بلوک", spec?.blockTitle ?: "")
-                        DetailRow("تعداد طبقات", spec?.floors ?: "")
-                        DetailRow("تعداد واحد", spec?.units ?: "")
-                        DetailRow("شماره پروانه", spec?.permitNumber ?: "")
-                        DetailRow("تاریخ صدور", spec?.permitDate ?: "")
-                        DetailRow("نوع کاربری", spec?.usageType ?: "")
+            if (spec != null) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("مشخصات ساختمان", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            DetailRow("آدرس", spec?.address ?: "")
+                            DetailRow("گروه ساختمانی", spec?.buildingGroup ?: "")
+                            DetailRow("کد نوسازی", spec?.renovationCode ?: "")
+                            DetailRow("نوع دستور", spec?.planInstructionType ?: "")
+                            DetailRow("شماره دستور", spec?.planInstructionNo ?: "")
+                            DetailRow("تاریخ دستور", spec?.planInstructionDate ?: "")
+                            DetailRow("نوع سازه", spec?.structureType ?: "")
+                            DetailRow("مساحت زمین", spec?.landArea ?: "")
+                            DetailRow("متراژ پاراف", spec?.parafArea ?: "")
+                            DetailRow("عنوان بلوک", spec?.blockTitle ?: "")
+                            DetailRow("تعداد بلوک", spec?.blockCount ?: "")
+                            DetailRow("تعداد طبقات", spec?.floors ?: "")
+                            DetailRow("تعداد واحد", spec?.units ?: "")
+                            DetailRow("صادرکننده", spec?.issuer ?: "")
+                            DetailRow("شماره پروانه", spec?.permitNumber ?: "")
+                            DetailRow("تاریخ صدور", spec?.permitDate ?: "")
+                            DetailRow("تاریخ رفع اثر", spec?.releaseDate ?: "")
+                            DetailRow("ناحیه نقشه", spec?.planZone ?: "")
+                            DetailRow("نوع کاربری", spec?.usageType ?: "")
+                        }
                     }
                 }
             }
@@ -103,7 +142,7 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 items(engineers) { eng ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(eng.name, fontWeight = FontWeight.Bold)
+                            Text(eng.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text("رشته: ${eng.discipline}", fontSize = 13.sp)
                             if (eng.role.isNotBlank()) {
                                 Text("نقش: ${eng.role}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -118,7 +157,7 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("حق‌الزحمه (${fees.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("حق\u200Cالزحمه (${fees.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -126,9 +165,18 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 items(fees) { fee ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("${fee.discipline} - ${fee.serviceType}", fontWeight = FontWeight.Bold)
-                            Text("مرحله: ${fee.stage} | مبلغ: ${fee.amount}", fontSize = 13.sp)
-                            Text("وضعیت: ${fee.payStatus}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("${fee.discipline} - ${fee.serviceType}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(fee.amount, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Text("مرحله: ${fee.stage}", fontSize = 12.sp)
+                            Text("وضعیت: ${fee.payStatus} | تأیید: ${fee.confirmStatus}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (fee.description.isNotBlank()) {
+                                Text("توضیحات: ${fee.description}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -139,7 +187,7 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("گزارش‌ها (${reports.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("گزارش\u200Cها (${reports.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -147,10 +195,29 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 items(reports) { report ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("${report.reportType} - مرحله ${report.stage}", fontWeight = FontWeight.Bold)
-                            Text("مهندس: ${report.engineer}", fontSize = 13.sp)
-                            Text("تاریخ: ${report.visitDate}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("${report.reportType}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("مرحله ${report.stage}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Text("مهندس: ${report.engineer} | رشته: ${report.discipline}", fontSize = 12.sp)
+                            Text("تاریخ: ${report.visitDate}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                    }
+                }
+            }
+
+            // Empty state
+            if (engineers.isEmpty() && fees.isEmpty() && reports.isEmpty()) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "اطلاعات تکمیلی یافت نشد",
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -164,7 +231,7 @@ fun DetailRow(label: String, value: String) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 2.dp),
+                .padding(vertical = 3.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
