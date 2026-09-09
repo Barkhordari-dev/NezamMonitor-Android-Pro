@@ -25,6 +25,7 @@ import com.nezammonitor.app.ui.screens.followup.FollowUpScreen
 import com.nezammonitor.app.ui.screens.home.HomeScreen
 import com.nezammonitor.app.ui.screens.reports.ReportsScreen
 import com.nezammonitor.app.ui.screens.settings.SettingsScreen
+import com.nezammonitor.app.ui.screens.export.ExportScreen
 import com.nezammonitor.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
@@ -99,7 +100,12 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                     HomeScreen(
                         viewModel = viewModel,
                         onNavigateToImport = { navController.navigate(Screen.Import.route) },
-                        onNavigateToCases = { navController.navigate(Screen.Cases.route) }
+                        onNavigateToCases = { navController.navigate(Screen.Cases.route) },
+                        onNavigateToEngineers = { navController.navigate(Screen.Engineers.route) },
+                        onNavigateToFees = { navController.navigate(Screen.Fees.route) },
+                        onNavigateToReports = { navController.navigate(Screen.Reports.route) },
+                        onNavigateToFollowUp = { navController.navigate(Screen.FollowUp.route) },
+                        onNavigateToExport = { navController.navigate(Screen.Export.route) }
                     )
                 }
                 composable(Screen.Cases.route) {
@@ -115,22 +121,69 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                     arguments = listOf(navArgument("caseNumber") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val encoded = backStackEntry.arguments?.getString("caseNumber") ?: ""
-                    val caseNumber = try {
-                        URLDecoder.decode(encoded, "UTF-8")
-                    } catch (e: Exception) {
-                        encoded
-                    }
+                    val caseNumber = try { URLDecoder.decode(encoded, "UTF-8") } catch (e: Exception) { encoded }
                     LaunchedEffect(caseNumber) { viewModel.loadCaseDetail(caseNumber) }
                     CaseDetailScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
                 composable(Screen.Engineers.route) {
-                    EngineersScreen(viewModel = viewModel)
+                    EngineersScreen(
+                        viewModel = viewModel,
+                        onCaseClick = { caseNumber ->
+                            navController.navigate(Screen.EngineerDetail.createRoute(caseNumber))
+                        }
+                    )
+                }
+                composable(
+                    route = Screen.EngineerDetail.route,
+                    arguments = listOf(navArgument("caseNumber") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val encoded = backStackEntry.arguments?.getString("caseNumber") ?: ""
+                    val caseNumber = try { URLDecoder.decode(encoded, "UTF-8") } catch (e: Exception) { encoded }
+                    LaunchedEffect(caseNumber) { viewModel.loadCaseDetail(caseNumber) }
+                    com.nezammonitor.app.ui.screens.engineers.EngineerDetailScreen(
+                        viewModel = viewModel,
+                        onBack = { navController.popBackStack() }
+                    )
                 }
                 composable(Screen.Fees.route) {
-                    FeesScreen(viewModel = viewModel)
+                    FeesScreen(
+                        viewModel = viewModel,
+                        onCaseClick = { caseNumber ->
+                            navController.navigate(Screen.FeeDetail.createRoute(caseNumber))
+                        }
+                    )
+                }
+                composable(
+                    route = Screen.FeeDetail.route,
+                    arguments = listOf(navArgument("caseNumber") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val encoded = backStackEntry.arguments?.getString("caseNumber") ?: ""
+                    val caseNumber = try { URLDecoder.decode(encoded, "UTF-8") } catch (e: Exception) { encoded }
+                    LaunchedEffect(caseNumber) { viewModel.loadCaseDetail(caseNumber) }
+                    com.nezammonitor.app.ui.screens.fees.FeeDetailScreen(
+                        viewModel = viewModel,
+                        onBack = { navController.popBackStack() }
+                    )
                 }
                 composable(Screen.Reports.route) {
-                    ReportsScreen(viewModel = viewModel)
+                    ReportsScreen(
+                        viewModel = viewModel,
+                        onCaseClick = { caseNumber ->
+                            navController.navigate(Screen.ReportDetail.createRoute(caseNumber))
+                        }
+                    )
+                }
+                composable(
+                    route = Screen.ReportDetail.route,
+                    arguments = listOf(navArgument("caseNumber") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val encoded = backStackEntry.arguments?.getString("caseNumber") ?: ""
+                    val caseNumber = try { URLDecoder.decode(encoded, "UTF-8") } catch (e: Exception) { encoded }
+                    LaunchedEffect(caseNumber) { viewModel.loadCaseDetail(caseNumber) }
+                    com.nezammonitor.app.ui.screens.reports.ReportDetailScreen(
+                        viewModel = viewModel,
+                        onBack = { navController.popBackStack() }
+                    )
                 }
                 composable(Screen.FollowUp.route) {
                     FollowUpScreen(viewModel = viewModel)
@@ -139,11 +192,10 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                     SettingsScreen(viewModel = viewModel)
                 }
                 composable(Screen.Import.route) {
-                    HomeScreen(
-                        viewModel = viewModel,
-                        onNavigateToImport = { },
-                        onNavigateToCases = { }
-                    )
+                    HomeScreen(viewModel = viewModel)
+                }
+                composable(Screen.Export.route) {
+                    ExportScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
             }
         }

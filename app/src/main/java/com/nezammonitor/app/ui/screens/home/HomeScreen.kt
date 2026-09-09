@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nezammonitor.app.data.ImportEngine
 import com.nezammonitor.app.viewmodel.MainViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,8 +25,13 @@ import kotlinx.coroutines.withContext
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
-    onNavigateToImport: () -> Unit,
-    onNavigateToCases: () -> Unit = {}
+    onNavigateToImport: () -> Unit = {},
+    onNavigateToCases: () -> Unit = {},
+    onNavigateToEngineers: () -> Unit = {},
+    onNavigateToFees: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
+    onNavigateToFollowUp: () -> Unit = {},
+    onNavigateToExport: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val cases by viewModel.cases.collectAsState()
@@ -62,35 +65,38 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Import button
+        // Row 1: Import + Export
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isImporting) MaterialTheme.colorScheme.surfaceVariant
-                    else MaterialTheme.colorScheme.primary
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Column(
                     modifier = Modifier
                         .clickable(enabled = !isImporting) {
                             importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
                         }
-                        .padding(20.dp),
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(if (isImporting) "⏳" else "📥", fontSize = 32.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        if (isImporting) "در حال وارد کردن..." else "ورود اطلاعات",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = if (isImporting) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.onPrimary
-                    )
-                    if (!isImporting) {
-                        Text("از ویندوز", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimary)
-                    }
+                    Text(if (isImporting) "⏳" else "📥", fontSize = 28.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("ورود اطلاعات", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToExport() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("📤", fontSize = 28.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("خروجی برای ویندوز", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiary)
                 }
             }
         }
@@ -109,9 +115,8 @@ fun HomeScreen(
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
                             text = if (importResult?.success == true) "✅ ${importResult?.message}" else "❌ ${importResult?.message}",
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
                         TextButton(onClick = { viewModel.clearImportResult() }) {
                             Text("بستن")
                         }
@@ -120,70 +125,57 @@ fun HomeScreen(
             }
         }
 
-        // Stat cards - clickable
+        // Row 2: Cases (clickable)
+        item {
+            StatCard("📋 پرونده\u200Cها", cases.size, MaterialTheme.colorScheme.primary, onClick = onNavigateToCases)
+        }
+        item {
+            StatCard("👷 مهندسین", engineers.size, MaterialTheme.colorScheme.secondary, onClick = onNavigateToEngineers)
+        }
+        item {
+            StatCard("💰 حق\u200Cالزحمه", fees.size, MaterialTheme.colorScheme.tertiary, onClick = onNavigateToFees)
+        }
+        item {
+            StatCard("📄 گزارش\u200Cها", reports.size, MaterialTheme.colorScheme.error, onClick = onNavigateToReports)
+        }
+
+        // Row 3: FollowUp quick link
         item {
             Card(
-                modifier = Modifier.fillMaxWidth().clickable { onNavigateToCases() },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToFollowUp() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
             ) {
-                Column(
+                Row(
                     modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("📋", fontSize = 24.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("پرونده\u200Cها", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("${cases.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("📌", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("پیگیری\u200Cها", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("👷", fontSize = 24.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("مهندسین", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("${engineers.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                }
-            }
-        }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f))
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("💰", fontSize = 24.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("حق\u200Cالزحمه", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("${fees.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
-                }
-            }
-        }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("📄", fontSize = 24.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("گزارش\u200Cها", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("${reports.size}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                }
-            }
+    }
+}
+
+@Composable
+fun StatCard(
+    title: String,
+    count: Int,
+    color: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit = {}
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("$count", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = color)
         }
     }
 }

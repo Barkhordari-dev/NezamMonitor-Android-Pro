@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.sp
 import com.nezammonitor.app.data.FollowUpEditEntity
 import com.nezammonitor.app.viewmodel.MainViewModel
 
+private enum class SortField { CASE_NUMBER, OWNER, ADDRESS, REPORT_COUNT }
+private enum class SortDirection { ASC, DESC }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowUpScreen(viewModel: MainViewModel) {
@@ -26,9 +29,12 @@ fun FollowUpScreen(viewModel: MainViewModel) {
     val edits by viewModel.followUpEdits.collectAsState()
     val reports by viewModel.reports.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var sortField by remember { mutableStateOf(SortField.CASE_NUMBER) }
+    var sortDirection by remember { mutableStateOf(SortDirection.ASC) }
+    var showSortMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    val items = remember(cases, edits, reports, searchQuery) {
+    val items = remember(cases, edits, reports, searchQuery, sortField, sortDirection) {
         val result = cases.map { case ->
             val edit = edits.find { it.caseNumber == case.caseNumber }
             val reportCount = reports.count { it.caseNumber == case.caseNumber }
@@ -41,47 +47,68 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                 description = edit?.description ?: "",
                 reportCount = reportCount
             )
+        }.filter { item ->
+            searchQuery.isBlank() ||
+            item.caseNumber.contains(searchQuery, true) ||
+            item.owner.contains(searchQuery, true) ||
+            item.mobile.contains(searchQuery, true) ||
+            item.description.contains(searchQuery, true)
         }
-        if (searchQuery.isBlank()) result
-        else result.filter {
-            it.caseNumber.contains(searchQuery, true) ||
-            it.owner.contains(searchQuery, true) ||
-            it.mobile.contains(searchQuery, true) ||
-            it.description.contains(searchQuery, true)
-        }.sortedBy { it.caseNumber }
+
+        val sorted = when (sortField) {
+            SortField.CASE_NUMBER -> result.sortedBy { it.caseNumber }
+            SortField.OWNER -> result.sortedBy { it.owner }
+            SortField.ADDRESS -> result.sortedBy { it.address }
+            SortField.REPORT_COUNT -> result.sortedBy { it.reportCount }
+        }
+        if (sortDirection == SortDirection.DESC) sorted.reversed() else sorted
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Search
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            label = { Text("جستجوی پرونده / مالک / توضیحات...") },
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            label = { Text("جستجو...") },
             singleLine = true
         )
 
-        // Summary
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("${items.size} پرونده قابل پیگیری", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                val withDesc = items.count { it.description.isNotBlank() }
-                Text("با توضیحات: $withDesc", fontSize = 12.sp)
+        // Sort controls
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box {
+                OutlinedButton(onClick = { showSortMenu = true }) {
+                    Text("مرتب‌سازی: ${when(sortField) {
+                        SortField.CASE_NUMBER -> "شماره پرونده"
+                        SortField.OWNER -> "نام مالک"
+                        SortField.ADDRESS -> "آدرس"
+                        SortField.REPORT_COUNT -> "تعداد گزارش"
+                    }}", fontSize = 12.sp)
+                }
+                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                    DropdownMenuItem(text = { Text("شماره پرونده") }, onClick = { sortField = SortField.CASE_NUMBER; showSortMenu = false })
+                    DropdownMenuItem(text = { Text("نام مالک") }, onClick = { sortField = SortField.OWNER; showSortMenu = false })
+                    DropdownMenuItem(text = { Text("آدرس") }, onClick = { sortField = SortField.ADDRESS; showSortMenu = false })
+                    DropdownMenuItem(text = { Text("تعداد گزارش") }, onClick = { sortField = SortField.REPORT_COUNT; showSortMenu = false })
+                }
+            }
+            OutlinedButton(onClick = { sortDirection = if (sortDirection == SortDirection.ASC) SortDirection.DESC else SortDirection.ASC }) {
+                Text(if (sortDirection == SortDirection.ASC) "↑ صعودی" else "↓ نزولی", fontSize = 12.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // Summary
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("${items.size} پرونده", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("با توضیحات: ${items.count { it.description.isNotBlank() }}", fontSize = 12.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -95,35 +122,20 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         // Header
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(item.caseNumber, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 Text("مالک: ${item.owner}", fontSize = 13.sp)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Card(
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                                    )
-                                ) {
-                                    Text(
-                                        "${item.reportCount} گزارش",
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                                    Text("${item.reportCount} گزارش", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                                 if (item.mobile.isNotBlank()) {
                                     Spacer(modifier = Modifier.width(8.dp))
                                     IconButton(onClick = {
                                         val cleaned = item.mobile.replace(Regex("[^0-9+]"), "")
-                                        val intent = Intent(Intent.ACTION_DIAL)
-                                        intent.data = Uri.parse("tel:$cleaned")
-                                        context.startActivity(intent)
+                                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleaned")))
                                     }) {
                                         Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary)
                                     }
@@ -131,68 +143,30 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                             }
                         }
 
-                        // Details
-                        if (item.mobile.isNotBlank()) {
-                            Text("همراه: ${item.mobile}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        if (item.address.isNotBlank()) {
-                            Text("آدرس: ${item.address}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        if (item.mobile.isNotBlank()) Text("همراه: ${item.mobile}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (item.address.isNotBlank()) Text("آدرس: ${item.address}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                        // Description section
+                        // Description
                         Spacer(modifier = Modifier.height(4.dp))
                         if (editingDescription) {
-                            OutlinedTextField(
-                                value = editedDesc,
-                                onValueChange = { editedDesc = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("توضیحات") },
-                                minLines = 2
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
+                            OutlinedTextField(value = editedDesc, onValueChange = { editedDesc = it }, modifier = Modifier.fillMaxWidth(), label = { Text("توضیحات") }, minLines = 2)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                TextButton(onClick = { editingDescription = false; editedDesc = item.description }) { Text("لغو") }
                                 TextButton(onClick = {
+                                    viewModel.saveFollowUpEdit(FollowUpEditEntity(
+                                        caseNumber = item.originalCaseNumber, description = editedDesc,
+                                        caseNumberEdit = item.caseNumber, ownerEdit = item.owner,
+                                        addressEdit = item.address, ownerMobileEdit = item.mobile
+                                    ))
                                     editingDescription = false
-                                    editedDesc = item.description
-                                }) {
-                                    Text("لغو")
-                                }
-                                TextButton(onClick = {
-                                    val edit = FollowUpEditEntity(
-                                        caseNumber = item.originalCaseNumber,
-                                        description = editedDesc,
-                                        caseNumberEdit = item.caseNumber,
-                                        ownerEdit = item.owner,
-                                        addressEdit = item.address,
-                                        ownerMobileEdit = item.mobile
-                                    )
-                                    viewModel.saveFollowUpEdit(edit)
-                                    editingDescription = false
-                                }) {
-                                    Text("ذخیره")
-                                }
+                                }) { Text("ذخیره") }
+                            }
+                        } else if (item.description.isNotBlank()) {
+                            Card(modifier = Modifier.clickable { editingDescription = true }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))) {
+                                Text("📝 ${item.description}", modifier = Modifier.padding(8.dp), fontSize = 13.sp)
                             }
                         } else {
-                            if (item.description.isNotBlank()) {
-                                Card(
-                                    modifier = Modifier.clickable { editingDescription = true },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                                    )
-                                ) {
-                                    Text(
-                                        "📝 ${item.description}",
-                                        modifier = Modifier.padding(8.dp),
-                                        fontSize = 13.sp
-                                    )
-                                }
-                            } else {
-                                TextButton(onClick = { editingDescription = true }) {
-                                    Text("+ افزودن توضیحات", fontSize = 12.sp)
-                                }
-                            }
+                            TextButton(onClick = { editingDescription = true }) { Text("+ افزودن توضیحات", fontSize = 12.sp) }
                         }
                     }
                 }
@@ -202,11 +176,6 @@ fun FollowUpScreen(viewModel: MainViewModel) {
 }
 
 data class FollowUpDisplayItem(
-    val caseNumber: String,
-    val originalCaseNumber: String,
-    val owner: String,
-    val mobile: String,
-    val address: String,
-    val description: String,
-    val reportCount: Int
+    val caseNumber: String, val originalCaseNumber: String, val owner: String,
+    val mobile: String, val address: String, val description: String, val reportCount: Int
 )
