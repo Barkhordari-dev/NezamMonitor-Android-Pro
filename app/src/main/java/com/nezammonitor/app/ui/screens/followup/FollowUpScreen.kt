@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nezammonitor.app.data.FollowUpEditEntity
 import com.nezammonitor.app.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,9 +89,12 @@ fun FollowUpScreen(viewModel: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(items, key = { it.originalCaseNumber }) { item ->
+                var editingDescription by remember { mutableStateOf(false) }
+                var editedDesc by remember(item.description) { mutableStateOf(item.description) }
+
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        // Header row
+                        // Header
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -101,7 +105,6 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                                 Text("مالک: ${item.owner}", fontSize = 13.sp)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Report count badge
                                 Card(
                                     colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.tertiaryContainer
@@ -122,16 +125,12 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                                         intent.data = Uri.parse("tel:$cleaned")
                                         context.startActivity(intent)
                                     }) {
-                                        Icon(
-                                            Icons.Default.Phone,
-                                            contentDescription = "تماس",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
+                                        Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                             }
                         }
-                        
+
                         // Details
                         if (item.mobile.isNotBlank()) {
                             Text("همراه: ${item.mobile}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -139,18 +138,60 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                         if (item.address.isNotBlank()) {
                             Text("آدرس: ${item.address}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if (item.description.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                                )
+
+                        // Description section
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (editingDescription) {
+                            OutlinedTextField(
+                                value = editedDesc,
+                                onValueChange = { editedDesc = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("توضیحات") },
+                                minLines = 2
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
                             ) {
-                                Text(
-                                    "📝 ${item.description}",
-                                    modifier = Modifier.padding(8.dp),
-                                    fontSize = 13.sp
-                                )
+                                TextButton(onClick = {
+                                    editingDescription = false
+                                    editedDesc = item.description
+                                }) {
+                                    Text("لغو")
+                                }
+                                TextButton(onClick = {
+                                    val edit = FollowUpEditEntity(
+                                        caseNumber = item.originalCaseNumber,
+                                        description = editedDesc,
+                                        caseNumberEdit = item.caseNumber,
+                                        ownerEdit = item.owner,
+                                        addressEdit = item.address,
+                                        ownerMobileEdit = item.mobile
+                                    )
+                                    viewModel.saveFollowUpEdit(edit)
+                                    editingDescription = false
+                                }) {
+                                    Text("ذخیره")
+                                }
+                            }
+                        } else {
+                            if (item.description.isNotBlank()) {
+                                Card(
+                                    modifier = Modifier.clickable { editingDescription = true },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                                    )
+                                ) {
+                                    Text(
+                                        "📝 ${item.description}",
+                                        modifier = Modifier.padding(8.dp),
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            } else {
+                                TextButton(onClick = { editingDescription = true }) {
+                                    Text("+ افزودن توضیحات", fontSize = 12.sp)
+                                }
                             }
                         }
                     }
