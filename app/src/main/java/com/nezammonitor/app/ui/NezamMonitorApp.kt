@@ -13,7 +13,7 @@ import com.nezammonitor.app.data.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NezamMonitorApp(db: NezamDatabase) {
-    val dao = remember { db.nezamDao() }
+    val dao = db.nezamDao()
 
     var currentScreen by remember { mutableStateOf("cases") }
     var searchQuery by remember { mutableStateOf("") }
