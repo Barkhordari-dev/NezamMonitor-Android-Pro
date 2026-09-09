@@ -97,7 +97,7 @@ fun HomeScreen(
 
         // Import result
         if (importResult != null) {
-            item(span = { GridItemSpan(2) }) {
+            item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(

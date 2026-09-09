@@ -155,10 +155,14 @@ class ImportEngine(private val context: Context) {
                 edits.forEach { dao.insertFollowUpEdit(it) }
             }
             
+            val casesCount = exportData.cases.size
+            val engineersCount = exportData.cases.sumOf { it.engineers.size }
+            val feesCount = exportData.cases.sumOf { it.fees.size }
+            val reportsCount = exportData.cases.sumOf { it.reports.size }
             val counts = ImportResult(
                 true,
-                "${cases.size} پرونده، ${engineers.size} مهندس، ${fees.size} حق\u200Cالزحمه، ${reports.size} گزارش وارد شد",
-                cases.size, engineers.size, fees.size, reports.size
+                "$casesCount پرونده، $engineersCount مهندس، $feesCount حق\u200Cالزحمه، $reportsCount گزارش وارد شد",
+                casesCount, engineersCount, feesCount, reportsCount
             )
             
             tempFile.delete()
