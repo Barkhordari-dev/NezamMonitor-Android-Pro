@@ -63,7 +63,7 @@ fun NezamMonitorApp(db: NezamDatabase) {
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
                 )
-                HorizontalDivider()
+                Divider()
                 NavigationDrawerItem(
                     icon = { Text("🏠") },
                     label = { Text("خانه") },
@@ -118,7 +118,7 @@ fun NezamMonitorApp(db: NezamDatabase) {
                         currentScreen = "followup"
                     }
                 )
-                HorizontalDivider()
+                Divider()
                 NavigationDrawerItem(
                     icon = { Text("⚙️") },
                     label = { Text("تنظیمات") },
