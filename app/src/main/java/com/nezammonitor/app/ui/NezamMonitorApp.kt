@@ -16,7 +16,6 @@ fun NezamMonitorApp(db: NezamDatabase) {
     val dao = db.nezamDao()
 
     var currentScreen by remember { mutableStateOf("cases") }
-    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -58,17 +57,8 @@ fun NezamMonitorApp(db: NezamDatabase) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("جستجو...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                singleLine = true
-            )
             when (currentScreen) {
-                "cases" -> CasesScreen(dao, searchQuery)
+                "cases" -> CasesScreen(dao)
                 "engineers" -> EngineersScreen(dao)
                 "fees" -> FeesScreen(dao)
                 "reports" -> ReportsScreen(dao)
@@ -78,12 +68,8 @@ fun NezamMonitorApp(db: NezamDatabase) {
 }
 
 @Composable
-fun CasesScreen(dao: NezamDao, searchQuery: String) {
-    val cases by if (searchQuery.isBlank()) {
-        dao.getAllCases().collectAsState(initial = emptyList())
-    } else {
-        dao.searchCases(searchQuery).collectAsState(initial = emptyList())
-    }
+fun CasesScreen(dao: NezamDao) {
+    val cases by dao.getAllCases().collectAsState(initial = emptyList())
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
