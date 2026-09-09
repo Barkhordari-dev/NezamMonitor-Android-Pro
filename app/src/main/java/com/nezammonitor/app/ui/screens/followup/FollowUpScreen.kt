@@ -28,22 +28,27 @@ fun FollowUpScreen(viewModel: MainViewModel) {
     val cases by viewModel.cases.collectAsState()
     val edits by viewModel.followUpEdits.collectAsState()
     val reports by viewModel.reports.collectAsState()
+    val specs by viewModel.specifications.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var sortField by remember { mutableStateOf(SortField.CASE_NUMBER) }
     var sortDirection by remember { mutableStateOf(SortDirection.ASC) }
     var showSortMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    val items = remember(cases, edits, reports, searchQuery, sortField, sortDirection) {
-        val result = cases.map { case ->
+    val items = remember(cases, edits, reports, specs, searchQuery, sortField, sortDirection) {
+        cases.map { case ->
             val edit = edits.find { it.caseNumber == case.caseNumber }
             val reportCount = reports.count { it.caseNumber == case.caseNumber }
+            val spec = specs.find { it.caseNumber == case.caseNumber }
+            val address = edit?.addressEdit?.ifBlank { null }
+                ?: spec?.address?.ifBlank { null }
+                ?: ""
             FollowUpDisplayItem(
                 caseNumber = edit?.caseNumberEdit?.ifBlank { case.caseNumber } ?: case.caseNumber,
                 originalCaseNumber = case.caseNumber,
                 owner = edit?.ownerEdit?.ifBlank { case.owner } ?: case.owner,
                 mobile = edit?.ownerMobileEdit?.ifBlank { case.ownerMobile } ?: case.ownerMobile,
-                address = edit?.addressEdit?.ifBlank { "" } ?: "",
+                address = address,
                 description = edit?.description ?: "",
                 reportCount = reportCount
             )
@@ -52,20 +57,19 @@ fun FollowUpScreen(viewModel: MainViewModel) {
             item.caseNumber.contains(searchQuery, true) ||
             item.owner.contains(searchQuery, true) ||
             item.mobile.contains(searchQuery, true) ||
-            item.description.contains(searchQuery, true)
+            item.description.contains(searchQuery, true) ||
+            item.address.contains(searchQuery, true)
+        }.let { result ->
+            when (sortField) {
+                SortField.CASE_NUMBER -> result.sortedBy { it.caseNumber }
+                SortField.OWNER -> result.sortedBy { it.owner }
+                SortField.ADDRESS -> result.sortedBy { it.address }
+                SortField.REPORT_COUNT -> result.sortedBy { it.reportCount }
+            }.let { if (sortDirection == SortDirection.DESC) it.reversed() else it }
         }
-
-        val sorted = when (sortField) {
-            SortField.CASE_NUMBER -> result.sortedBy { it.caseNumber }
-            SortField.OWNER -> result.sortedBy { it.owner }
-            SortField.ADDRESS -> result.sortedBy { it.address }
-            SortField.REPORT_COUNT -> result.sortedBy { it.reportCount }
-        }
-        if (sortDirection == SortDirection.DESC) sorted.reversed() else sorted
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -97,7 +101,6 @@ fun FollowUpScreen(viewModel: MainViewModel) {
             }
         }
 
-        // Summary
         Card(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
@@ -135,7 +138,9 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                                     Spacer(modifier = Modifier.width(8.dp))
                                     IconButton(onClick = {
                                         val cleaned = item.mobile.replace(Regex("[^0-9+]"), "")
-                                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleaned")))
+                                        try {
+                                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleaned")))
+                                        } catch (_: Exception) {}
                                     }) {
                                         Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary)
                                     }

@@ -46,6 +46,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _followUpEdits = MutableStateFlow<List<FollowUpEditEntity>>(emptyList())
     val followUpEdits: StateFlow<List<FollowUpEditEntity>> = _followUpEdits.asStateFlow()
 
+    // Specs - for address lookup
+    private val _specifications = MutableStateFlow<List<SpecificationEntity>>(emptyList())
+    val specifications: StateFlow<List<SpecificationEntity>> = _specifications.asStateFlow()
+
     // Import
     private val _importResult = MutableStateFlow<ImportResult?>(null)
     val importResult: StateFlow<ImportResult?> = _importResult.asStateFlow()
@@ -73,6 +77,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             dao.getAllFollowUpEdits().distinctUntilChanged().collect { _followUpEdits.value = it }
         }
+        viewModelScope.launch {
+            dao.getAllSpecifications().distinctUntilChanged().collect { _specifications.value = it }
+        }
+    }
+
+    fun getSpecificationForCase(caseNumber: String): SpecificationEntity? {
+        return _specifications.value.find { it.caseNumber == caseNumber }
     }
 
     fun loadCaseDetail(caseNumber: String) {

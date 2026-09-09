@@ -71,6 +71,9 @@ interface NezamDao {
     suspend fun deleteAllReports()
     
     // FollowUp Edits
+    @Query("SELECT * FROM specifications")
+    fun getAllSpecifications(): Flow<List<SpecificationEntity>>
+
     @Query("SELECT * FROM followup_edits")
     fun getAllFollowUpEdits(): Flow<List<FollowUpEditEntity>>
     

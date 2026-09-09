@@ -14,15 +14,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nezammonitor.app.viewmodel.MainViewModel
 
+data class AppPreferences(
+    val themeMode: Int = 0, // 0=Light, 1=Dark, 2=System
+    val isRtl: Boolean = true,
+    val fontScale: Float = 1.0f
+) {
+    companion object {
+        fun load(context: Context): AppPreferences {
+            val prefs = context.getSharedPreferences("nezam_settings", Context.MODE_PRIVATE)
+            return AppPreferences(
+                themeMode = prefs.getInt("theme", 0),
+                isRtl = prefs.getBoolean("rtl", true),
+                fontScale = prefs.getFloat("font_scale", 1.0f)
+            )
+        }
+    }
+
+    fun save(context: Context) {
+        context.getSharedPreferences("nezam_settings", Context.MODE_PRIVATE).edit()
+            .putInt("theme", themeMode)
+            .putBoolean("rtl", isRtl)
+            .putFloat("font_scale", fontScale)
+            .apply()
+    }
+}
+
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("nezam_settings", Context.MODE_PRIVATE) }
-    
-    var isRtl by remember { mutableStateOf(prefs.getBoolean("rtl", true)) }
-    var fontSize by remember { mutableFloatStateOf(prefs.getFloat("font_scale", 1.0f)) }
-    var themeMode by remember { mutableIntStateOf(prefs.getInt("theme", 0)) }
-    
+    var prefs by remember { mutableStateOf(AppPreferences.load(context)) }
+
     val cases by viewModel.cases.collectAsState()
     val engineers by viewModel.engineers.collectAsState()
     val fees by viewModel.fees.collectAsState()
@@ -44,20 +65,26 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
                 val themes = listOf("روشن", "تاریک", "سیستمی")
                 themes.forEachIndexed { index, name ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
-                            selected = themeMode == index,
+                            selected = prefs.themeMode == index,
                             onClick = {
-                                themeMode = index
-                                prefs.edit().putInt("theme", index).apply()
+                                prefs = prefs.copy(themeMode = index)
+                                prefs.save(context)
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(name, fontSize = 14.sp)
                     }
+                }
+                // Preview
+                Spacer(modifier = Modifier.height(8.dp))
+                val previewBg = when(prefs.themeMode) {
+                    1 -> MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                    else -> MaterialTheme.colorScheme.surface
+                }
+                Card(colors = CardDefaults.cardColors(containerColor = previewBg)) {
+                    Text("پیش‌نمایش متن", modifier = Modifier.padding(12.dp), fontSize = 14.sp)
                 }
             }
         }
@@ -69,20 +96,14 @@ fun SettingsScreen(viewModel: MainViewModel) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("جهت صفحه", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("راست به چپ (فارسی)", fontSize = 14.sp)
-                    Switch(
-                        checked = isRtl,
-                        onCheckedChange = {
-                            isRtl = it
-                            prefs.edit().putBoolean("rtl", it).apply()
-                        }
-                    )
+                    Switch(checked = prefs.isRtl, onCheckedChange = {
+                        prefs = prefs.copy(isRtl = it)
+                        prefs.save(context)
+                    })
                 }
+                Text("تأیید: ${if (prefs.isRtl) "راست به چپ ✅" else "چپ به راست ✅"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
         }
 
@@ -93,28 +114,24 @@ fun SettingsScreen(viewModel: MainViewModel) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("اندازه متن", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("کوچک", fontSize = 12.sp)
-                    Text("عادی", fontSize = 14.sp)
-                    Text("بزرگ", fontSize = 16.sp)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("کوچک", fontSize = 12.sp); Text("عادی", fontSize = 14.sp); Text("بزرگ", fontSize = 16.sp)
                 }
                 Slider(
-                    value = fontSize,
-                    onValueChange = { fontSize = it },
-                    onValueChangeFinished = {
-                        prefs.edit().putFloat("font_scale", fontSize).apply()
-                    },
+                    value = prefs.fontScale,
+                    onValueChange = { prefs = prefs.copy(fontScale = it) },
+                    onValueChangeFinished = { prefs.save(context) },
                     valueRange = 0.85f..1.3f,
                     steps = 2
                 )
                 Text("اندازه فعلی: ${when {
-                    fontSize < 0.92f -> "کوچک"
-                    fontSize < 1.1f -> "عادی"
+                    prefs.fontScale < 0.92f -> "کوچک"
+                    prefs.fontScale < 1.1f -> "عادی"
                     else -> "بزرگ"
                 }}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Preview
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("پیش‌نمایش: ${"این متن با اندازه تغییر یافته نمایش داده می‌شود."}", fontSize = (14 * prefs.fontScale).sp)
             }
         }
 

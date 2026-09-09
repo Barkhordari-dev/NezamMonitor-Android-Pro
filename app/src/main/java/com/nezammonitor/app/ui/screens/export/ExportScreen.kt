@@ -3,6 +3,7 @@ package com.nezammonitor.app.ui.screens.export
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -39,6 +40,7 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var statusMessage by remember { mutableStateOf("") }
     var isExporting by remember { mutableStateOf(false) }
+    var lastExportedFile by remember { mutableStateOf<File?>(null) }
 
     Scaffold(
         topBar = {
@@ -80,9 +82,14 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         isExporting = true
                         statusMessage = "در حال ایجاد خروجی..."
                         val result = withContext(Dispatchers.IO) {
-                            createAndroidExport(context, edits, cases)
+                            createAndroidExport(context, edits)
                         }
-                        statusMessage = result
+                        if (result.first) {
+                            lastExportedFile = File(result.second)
+                            statusMessage = "✅ خروجی ایجاد شد"
+                        } else {
+                            statusMessage = "❌ ${result.second}"
+                        }
                         isExporting = false
                     }
                 },
@@ -90,6 +97,27 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 enabled = !isExporting && edits.isNotEmpty()
             ) {
                 Text(if (isExporting) "⏳ در حال ایجاد..." else "📤 ایجاد خروجی برای ویندوز", fontSize = 15.sp)
+            }
+
+            // Share button
+            if (lastExportedFile != null) {
+                Button(
+                    onClick = {
+                        val file = lastExportedFile ?: return@Button
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/zip"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            setPackage(null) // let user choose app
+                        }
+                        context.startActivity(Intent.createChooser(intent, "اشتراک\u200Cگذاری خروجی"))
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text("📱 اشتراک\u200Cگذاری (بلوتوث، تلگرام، ایتا...)", fontSize = 14.sp)
+                }
             }
 
             if (statusMessage.isNotBlank()) {
@@ -112,7 +140,7 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
 }
 
-private suspend fun createAndroidExport(context: Context, edits: List<FollowUpEditEntity>, cases: List<CaseEntity>): String {
+private suspend fun createAndroidExport(context: Context, edits: List<FollowUpEditEntity>): Pair<Boolean, String> {
     return withContext(Dispatchers.IO) {
         try {
             val changes = edits.map { edit ->
@@ -153,26 +181,19 @@ private suspend fun createAndroidExport(context: Context, edits: List<FollowUpEd
             tempZip.copyTo(zipFile, overwrite = true)
             tempZip.delete()
 
-            "✅ خروجی ایجاد شد: ${zipFile.absolutePath}\n${changes.size} تغییر"
+            Pair(true, zipFile.absolutePath)
         } catch (e: Exception) {
-            "❌ خطا: ${e.message}"
+            Pair(false, "خطا: ${e.message}")
         }
     }
 }
 
 data class AndroidChangeSet(
-    val format: String = "",
-    val version: Int = 1,
-    val source: String = "",
-    val createdAt: String = "",
-    val changes: List<AndroidChange> = emptyList()
+    val format: String = "", val version: Int = 1, val source: String = "",
+    val createdAt: String = "", val changes: List<AndroidChange> = emptyList()
 )
 
 data class AndroidChange(
-    val entity: String = "",
-    val recordId: String = "",
-    val field: String = "",
-    val oldValue: String = "",
-    val newValue: String = "",
-    val modifiedAt: String = ""
+    val entity: String = "", val recordId: String = "", val field: String = "",
+    val oldValue: String = "", val newValue: String = "", val modifiedAt: String = ""
 )
