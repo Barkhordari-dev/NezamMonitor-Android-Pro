@@ -111,8 +111,7 @@ fun NezamMonitorApp(db: NezamDatabase) {
                     onImportClick = {
                         importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
                     },
-                    importMessage = importMessage,
-                    dao = dao
+                    importMessage = importMessage
                 )
                 "cases" -> CasesScreen(dao)
                 "engineers" -> EngineersScreen(dao)
@@ -125,12 +124,7 @@ fun NezamMonitorApp(db: NezamDatabase) {
 }
 
 @Composable
-fun HomeScreen(onImportClick: () -> Unit, importMessage: String, dao: NezamDao) {
-    val casesCount by dao.getCasesCount().collectAsState(initial = 0)
-    val engineersCount by dao.getEngineersCount().collectAsState(initial = 0)
-    val feesCount by dao.getFeesCount().collectAsState(initial = 0)
-    val reportsCount by dao.getReportsCount().collectAsState(initial = 0)
-
+fun HomeScreen(onImportClick: () -> Unit, importMessage: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -140,7 +134,6 @@ fun HomeScreen(onImportClick: () -> Unit, importMessage: String, dao: NezamDao) 
         Text("خوش آمدید", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Import button
         Button(
             onClick = onImportClick,
             modifier = Modifier.fillMaxWidth(),
@@ -149,7 +142,6 @@ fun HomeScreen(onImportClick: () -> Unit, importMessage: String, dao: NezamDao) 
             Text("ورود اطلاعات از ویندوز", modifier = Modifier.padding(8.dp), fontSize = 16.sp)
         }
 
-        // Import message
         if (importMessage.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             Card(
@@ -170,35 +162,6 @@ fun HomeScreen(onImportClick: () -> Unit, importMessage: String, dao: NezamDao) 
                         MaterialTheme.colorScheme.onErrorContainer
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Stats
-        Text("آمار داده‌ها", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            StatCard("📋 پرونده‌ها", casesCount)
-            StatCard("👷 مهندسین", engineersCount)
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            StatCard("💰 حق‌الزحمه", feesCount)
-            StatCard("📄 گزارش‌ها", reportsCount)
-        }
-    }
-}
-
-@Composable
-fun StatCard(title: String, count: Int) {
-    Card(modifier = Modifier.width(150.dp)) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text("$count", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
