@@ -8,12 +8,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nezammonitor.app.data.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,63 +26,78 @@ fun NezamMonitorApp(db: NezamDatabase) {
     val dao = db.nezamDao()
     val context = LocalContext.current
 
-    var currentScreen by remember { mutableStateOf("cases") }
+    var currentScreen by remember { mutableStateOf("home") }
     var importMessage by remember { mutableStateOf("") }
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
+    ) { uri ->
         uri?.let {
             val engine = ImportEngine(context)
             val result = kotlinx.coroutines.runBlocking {
                 engine.importFromUri(it)
             }
             importMessage = if (result.success) {
-                "✅ موفق: ${result.casesCount} پرونده، ${result.feesCount} حق‌الزحمه، ${result.reportsCount} گزارش"
+                "موفق: ${result.casesCount} پرونده، ${result.feesCount} حق‌الزحمه، ${result.reportsCount} گزارش"
             } else {
-                "❌ خطا: ${result.message}"
+                "خطا: ${result.message}"
             }
+            currentScreen = "home"
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("سیستم مانیتور نظم مهندسی", fontWeight = FontWeight.Bold) }
+                title = {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("سیستم مانیتور نظام مهندسی", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("ساخته شده توسط مهندس برخورداری", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                navigationIcon = {
+                    if (currentScreen != "home") {
+                        IconButton(onClick = { currentScreen = "home" }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "بازگشت")
+                        }
+                    }
+                }
             )
         },
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = currentScreen == "cases",
-                    onClick = { currentScreen = "cases" },
-                    icon = { Text("📋") },
-                    label = { Text("پرونده‌ها") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == "engineers",
-                    onClick = { currentScreen = "engineers" },
-                    icon = { Text("👷") },
-                    label = { Text("مهندسین") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == "fees",
-                    onClick = { currentScreen = "fees" },
-                    icon = { Text("💰") },
-                    label = { Text("حق‌الزحمه") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == "reports",
-                    onClick = { currentScreen = "reports" },
-                    icon = { Text("📄") },
-                    label = { Text("گزارش‌ها") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == "followup",
-                    onClick = { currentScreen = "followup" },
-                    icon = { Text("📌") },
-                    label = { Text("پیگیری") }
-                )
+            if (currentScreen == "home") {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { currentScreen = "cases" },
+                        icon = { Text("📋") },
+                        label = { Text("پرونده‌ها") }
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { currentScreen = "engineers" },
+                        icon = { Text("👷") },
+                        label = { Text("مهندسین") }
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { currentScreen = "fees" },
+                        icon = { Text("💰") },
+                        label = { Text("حق‌الزحمه") }
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { currentScreen = "reports" },
+                        icon = { Text("📄") },
+                        label = { Text("گزارش‌ها") }
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { currentScreen = "followup" },
+                        icon = { Text("📌") },
+                        label = { Text("پیگیری") }
+                    )
+                }
             }
         }
     ) { padding ->
@@ -87,47 +106,14 @@ fun NezamMonitorApp(db: NezamDatabase) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Import button
-            Button(
-                onClick = {
-                    importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("📱 وارد کردن اطلاعات از ویندوز", modifier = Modifier.padding(8.dp))
-            }
-
-            // Import message
-            if (importMessage.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (importMessage.startsWith("✅"))
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = importMessage,
-                        modifier = Modifier.padding(12.dp),
-                        color = if (importMessage.startsWith("✅"))
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             when (currentScreen) {
+                "home" -> HomeScreen(
+                    onImportClick = {
+                        importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+                    },
+                    importMessage = importMessage,
+                    dao = dao
+                )
                 "cases" -> CasesScreen(dao)
                 "engineers" -> EngineersScreen(dao)
                 "fees" -> FeesScreen(dao)
@@ -139,8 +125,88 @@ fun NezamMonitorApp(db: NezamDatabase) {
 }
 
 @Composable
+fun HomeScreen(onImportClick: () -> Unit, importMessage: String, dao: NezamDao) {
+    val casesCount by dao.getCasesCount().collectAsState(initial = 0)
+    val engineersCount by dao.getEngineersCount().collectAsState(initial = 0)
+    val feesCount by dao.getFeesCount().collectAsState(initial = 0)
+    val reportsCount by dao.getReportsCount().collectAsState(initial = 0)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("خوش آمدید", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Import button
+        Button(
+            onClick = onImportClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text("ورود اطلاعات از ویندوز", modifier = Modifier.padding(8.dp), fontSize = 16.sp)
+        }
+
+        // Import message
+        if (importMessage.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (importMessage.startsWith("موفق"))
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Text(
+                    text = importMessage,
+                    modifier = Modifier.padding(12.dp),
+                    color = if (importMessage.startsWith("موفق"))
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Stats
+        Text("آمار داده‌ها", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            StatCard("📋 پرونده‌ها", casesCount)
+            StatCard("👷 مهندسین", engineersCount)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            StatCard("💰 حق‌الزحمه", feesCount)
+            StatCard("📄 گزارش‌ها", reportsCount)
+        }
+    }
+}
+
+@Composable
+fun StatCard(title: String, count: Int) {
+    Card(modifier = Modifier.width(150.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("$count", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
 fun CasesScreen(dao: NezamDao) {
     val cases by dao.getAllCases().collectAsState(initial = emptyList())
+    val context = LocalContext.current
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -159,7 +225,7 @@ fun CasesScreen(dao: NezamDao) {
                             modifier = Modifier.clickable {
                                 val intent = Intent(Intent.ACTION_DIAL)
                                 intent.data = Uri.parse("tel:${case.ownerMobile}")
-                                // context.startActivity(intent)
+                                context.startActivity(intent)
                             }
                         )
                     }
@@ -234,15 +300,12 @@ fun FollowUpScreen(dao: NezamDao) {
     val edits by dao.getAllFollowUpEdits().collectAsState(initial = emptyList())
     val cases by dao.getAllCases().collectAsState(initial = emptyList())
 
-    // Build follow-up items: for each case, check if there's an edit
     val followUpItems = remember(edits, cases) {
         cases.map { case ->
             val edit = edits.find { it.caseNumber == case.caseNumber }
             FollowUpDisplayItem(
                 caseNumber = edit?.caseNumberEdit?.ifBlank { case.caseNumber } ?: case.caseNumber,
                 owner = edit?.ownerEdit?.ifBlank { case.owner } ?: case.owner,
-                address = edit?.addressEdit?.ifBlank { "" } ?: "",
-                mobile = edit?.ownerMobileEdit?.ifBlank { case.ownerMobile } ?: case.ownerMobile,
                 description = edit?.description ?: "",
                 hasEdit = edit != null
             )
@@ -260,10 +323,7 @@ fun FollowUpScreen(dao: NezamDao) {
                     Text("پرونده: ${item.caseNumber}", fontWeight = FontWeight.Bold)
                     Text("مالک: ${item.owner}")
                     if (item.description.isNotBlank()) {
-                        Text(
-                            text = "توضیحات: ${item.description}",
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
+                        Text("توضیحات: ${item.description}", color = MaterialTheme.colorScheme.tertiary)
                     }
                 }
             }
@@ -274,8 +334,6 @@ fun FollowUpScreen(dao: NezamDao) {
 data class FollowUpDisplayItem(
     val caseNumber: String,
     val owner: String,
-    val address: String,
-    val mobile: String,
     val description: String,
     val hasEdit: Boolean
 )
