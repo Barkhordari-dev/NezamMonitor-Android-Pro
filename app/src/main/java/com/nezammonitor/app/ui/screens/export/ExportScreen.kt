@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.lingala.zip4j.ZipFile
+import net.lingala.zip4j.model.ZipParameters
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -69,7 +70,7 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("📤 خروجی تغییرات", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("فقط تغییرات ویرایش‌شده در Android (توضیحات پیگیری) به Windows منتقل می‌شود.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("فقط تغییرات ویرایش\u200Cشده در Android (توضیحات پیگیری) به Windows منتقل می\u200Cشود.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -99,7 +100,12 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
             if (edits.isEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    Text("تغییراتی برای ارسال وجود ندارد.\nابتدا در بخش پیگیری، توضیحاتی ویرایش کنید.", modifier = Modifier.padding(16.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "تغییراتی برای ارسال وجود ندارد.\nابتدا در بخش پیگیری، توضیحاتی ویرایش کنید.",
+                        modifier = Modifier.padding(16.dp),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -110,7 +116,6 @@ private suspend fun createAndroidExport(context: Context, edits: List<FollowUpEd
     return withContext(Dispatchers.IO) {
         try {
             val changes = edits.map { edit ->
-                val original = cases.find { it.caseNumber == edit.caseNumber }
                 AndroidChange(
                     entity = "FollowUp",
                     recordId = edit.caseNumber,
@@ -132,7 +137,6 @@ private suspend fun createAndroidExport(context: Context, edits: List<FollowUpEd
             val gson: Gson = GsonBuilder().setPrettyPrinting().create()
             val json = gson.toJson(changeSet)
 
-            // Save to Downloads
             val dir = File(context.getExternalFilesDir(null), "exports")
             dir.mkdirs()
             val fileName = "android_changes_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.nzmdata"
@@ -142,7 +146,9 @@ private suspend fun createAndroidExport(context: Context, edits: List<FollowUpEd
             if (tempZip.exists()) tempZip.delete()
 
             val zf = ZipFile(tempZip)
-            zf.addStream(json.byteInputStream(), "changes.json")
+            val zp = ZipParameters()
+            zp.fileNameInZip = "changes.json"
+            zf.addStream(json.byteInputStream(), zp)
 
             tempZip.copyTo(zipFile, overwrite = true)
             tempZip.delete()
