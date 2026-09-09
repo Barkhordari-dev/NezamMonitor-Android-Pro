@@ -54,7 +54,7 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                HorizontalDivider()
+                Divider()
                 drawerItems.forEach { screen ->
                     NavigationDrawerItem(
                         icon = { Text(screen.icon) },

@@ -19,6 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nezammonitor.app.data.ImportEngine
 import com.nezammonitor.app.viewmodel.MainViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
@@ -29,16 +33,18 @@ fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
     val reports by viewModel.reports.collectAsState()
     val importResult by viewModel.importResult.collectAsState()
 
+    val coroutineScope = rememberCoroutineScope()
+
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            coroutineScope.launch {
                 val engine = ImportEngine(context)
-                val result = engine.importFromUri(it)
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    viewModel.importData(result)
+                val result = withContext(Dispatchers.IO) {
+                    engine.importFromUri(it)
                 }
+                viewModel.importData(result)
             }
         }
     }
@@ -49,14 +55,17 @@ fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Import button
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .clickable {
+                            importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+                        }
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("📥", fontSize = 32.sp)
@@ -67,7 +76,6 @@ fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
             }
         }
 
-        // Import message
         if (importResult != null) {
             item {
                 Card(
@@ -88,19 +96,10 @@ fun HomeScreen(viewModel: MainViewModel, onNavigateToImport: () -> Unit) {
             }
         }
 
-        // Stats cards
-        item {
-            StatCard("📋 پرونده‌ها", cases.size, MaterialTheme.colorScheme.primary)
-        }
-        item {
-            StatCard("👷 مهندسین", engineers.size, MaterialTheme.colorScheme.secondary)
-        }
-        item {
-            StatCard("💰 حق‌الزحمه", fees.size, MaterialTheme.colorScheme.tertiary)
-        }
-        item {
-            StatCard("📄 گزارش‌ها", reports.size, MaterialTheme.colorScheme.error)
-        }
+        item { StatCard("📋 پرونده‌ها", cases.size, MaterialTheme.colorScheme.primary) }
+        item { StatCard("👷 مهندسین", engineers.size, MaterialTheme.colorScheme.secondary) }
+        item { StatCard("💰 حق‌الزحمه", fees.size, MaterialTheme.colorScheme.tertiary) }
+        item { StatCard("📄 گزارش‌ها", reports.size, MaterialTheme.colorScheme.error) }
     }
 }
 
