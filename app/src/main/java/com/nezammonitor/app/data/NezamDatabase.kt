@@ -2,6 +2,7 @@ package com.nezammonitor.app.data
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
