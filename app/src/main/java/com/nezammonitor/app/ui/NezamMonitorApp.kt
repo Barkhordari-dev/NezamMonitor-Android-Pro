@@ -12,8 +12,7 @@ import com.nezammonitor.app.data.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NezamMonitorApp() {
-    val db = remember { NezamDatabase.INSTANCE }
+fun NezamMonitorApp(db: NezamDatabase) {
     val dao = db.nezamDao()
 
     var currentScreen by remember { mutableStateOf("cases") }
@@ -22,7 +21,7 @@ fun NezamMonitorApp() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("سیستم مانیتور نظم مهندسی", fontWeight = FontWeight.Bold) }
+                title = { Text("سیستم مانیtor نظم مهندسی", fontWeight = FontWeight.Bold) }
             )
         },
         bottomBar = {

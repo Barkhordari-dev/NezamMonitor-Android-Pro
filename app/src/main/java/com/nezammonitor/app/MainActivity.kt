@@ -11,11 +11,11 @@ import com.nezammonitor.app.data.NezamDatabase
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        NezamDatabase.getDatabase(applicationContext)
+        val db = NezamDatabase.getDatabase(applicationContext)
         setContent {
             MaterialTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    NezamMonitorApp()
+                    NezamMonitorApp(db)
                 }
             }
         }
