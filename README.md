@@ -78,7 +78,7 @@ git clone https://github.com/Barkhordari-dev/nezammonitor-android.git
 
 ## 📞 پشتیبانی
 
-- **توسعه‌دهنده:** مهندس مهدی برخورداری
+- **توسعه‌دهنده:** مهندس برخورداری
 - **Issues:** [ایجاد مشکل](https://github.com/Barkhordari-dev/nezammonitor-android/issues)
 
 **⚠️ این نرم‌افزار برای ناظرین مکانیک طراحی شده و صدور گزارش‌ها بر اساس نیاز ناظر مکانیک هست.**
