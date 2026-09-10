@@ -22,6 +22,27 @@ import com.nezammonitor.app.viewmodel.MainViewModel
 private enum class SortField { CASE_NUMBER, OWNER, ADDRESS, REPORT_COUNT }
 private enum class SortDirection { ASC, DESC }
 
+/** Convert Persian/Arabic digits to English */
+private fun String.normalizeDigits(): String {
+    return this
+        .replace("۰","0").replace("۱","1").replace("۲","2")
+        .replace("۳","3").replace("۴","4").replace("۵","5")
+        .replace("۶","6").replace("۷","7").replace("۸","8").replace("۹","9")
+        .replace("٠","0").replace("١","1").replace("٢","2")
+        .replace("٣","3").replace("٤","4").replace("٥","5")
+        .replace("٦","6").replace("٧","7").replace("٨","8").replace("٩","9")
+}
+
+private fun dialPhone(context: android.content.Context, phone: String) {
+    try {
+        val cleaned = phone.normalizeDigits().replace(Regex("[^0-9+]"), "")
+        if (cleaned.isBlank()) return
+        val intent = Intent(Intent.ACTION_DIAL)
+        intent.data = Uri.parse("tel:$cleaned")
+        context.startActivity(intent)
+    } catch (_: Exception) {}
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowUpScreen(viewModel: MainViewModel) {
@@ -74,7 +95,7 @@ fun FollowUpScreen(viewModel: MainViewModel) {
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            label = { Text("جستجو...") },
+            label = { Text("جستجوی پرونده / مالک / توضیحات...") },
             singleLine = true
         )
 
@@ -124,7 +145,6 @@ fun FollowUpScreen(viewModel: MainViewModel) {
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        // Header
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(item.caseNumber, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -136,12 +156,7 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                                 }
                                 if (item.mobile.isNotBlank()) {
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    IconButton(onClick = {
-                                        val cleaned = item.mobile.replace(Regex("[^0-9+]"), "")
-                                        try {
-                                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleaned")))
-                                        } catch (_: Exception) {}
-                                    }) {
+                                    IconButton(onClick = { dialPhone(context, item.mobile) }) {
                                         Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary)
                                     }
                                 }
@@ -151,7 +166,6 @@ fun FollowUpScreen(viewModel: MainViewModel) {
                         if (item.mobile.isNotBlank()) Text("همراه: ${item.mobile}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (item.address.isNotBlank()) Text("آدرس: ${item.address}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                        // Description
                         Spacer(modifier = Modifier.height(4.dp))
                         if (editingDescription) {
                             OutlinedTextField(value = editedDesc, onValueChange = { editedDesc = it }, modifier = Modifier.fillMaxWidth(), label = { Text("توضیحات") }, minLines = 2)

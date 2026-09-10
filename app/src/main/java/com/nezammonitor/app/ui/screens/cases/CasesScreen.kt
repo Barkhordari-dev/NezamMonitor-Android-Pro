@@ -18,11 +18,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nezammonitor.app.viewmodel.MainViewModel
 
+/** Convert Persian/Arabic digits to English */
+private fun String.normalizeDigits(): String {
+    return this
+        .replace("۰","0").replace("۱","1").replace("۲","2")
+        .replace("۳","3").replace("۴","4").replace("۵","5")
+        .replace("۶","6").replace("۷","7").replace("۸","8").replace("۹","9")
+        .replace("٠","0").replace("١","1").replace("٢","2")
+        .replace("٣","3").replace("٤","4").replace("٥","5")
+        .replace("٦","6").replace("٧","7").replace("٨","8").replace("٩","9")
+}
+
+private fun dialPhone(context: android.content.Context, phone: String) {
+    try {
+        val cleaned = phone.normalizeDigits().replace(Regex("[^0-9+]"), "")
+        if (cleaned.isBlank()) return
+        val intent = Intent(Intent.ACTION_DIAL)
+        intent.data = Uri.parse("tel:$cleaned")
+        context.startActivity(intent)
+    } catch (_: Exception) {}
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CasesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit) {
     val cases by viewModel.cases.collectAsState()
-    val specs by remember { mutableStateOf(listOf<com.nezammonitor.app.data.SpecificationEntity>()) }
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
 
@@ -32,8 +52,7 @@ fun CasesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit) {
             it.caseNumber.contains(searchQuery, true) ||
             it.owner.contains(searchQuery, true) ||
             it.ownerMobile.contains(searchQuery, true) ||
-            it.serial.contains(searchQuery, true) ||
-            it.office.contains(searchQuery, true)
+            it.serial.contains(searchQuery, true)
         }
     }
 
@@ -41,17 +60,13 @@ fun CasesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             label = { Text("جستجوی شماره پرونده / مالک / موبایل...") },
             singleLine = true
         )
 
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Text(
@@ -86,12 +101,7 @@ fun CasesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit) {
                                 Text("مالک: ${case.owner}", fontSize = 14.sp)
                             }
                             if (case.ownerMobile.isNotBlank()) {
-                                IconButton(onClick = {
-                                    val cleaned = case.ownerMobile.replace(Regex("[^0-9+]"), "")
-                                    val intent = Intent(Intent.ACTION_DIAL)
-                                    intent.data = Uri.parse("tel:$cleaned")
-                                    context.startActivity(intent)
-                                }) {
+                                IconButton(onClick = { dialPhone(context, case.ownerMobile) }) {
                                     Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
