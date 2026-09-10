@@ -23,7 +23,7 @@
 
 ## 📥 دانلود
 
-**لینک دانلود:** [GitHub Releases](https://github.com/mmahdib2020-cpu/nezammonitor-android/releases/tag/v1.0.0)
+**لینک دانلود:** [GitHub Releases](https://github.com/Barkhordari-dev/nezammonitor-android/releases/tag/v1.0.0)
 
 | فایل | حجم | توضیح |
 |------|------|--------|
@@ -50,7 +50,7 @@
 اندروید → ویرایش → خروجی → .nzmdata → ویندوز → وارد کردن
 ```
 
-**نسخه ویندوز:** [GitHub](https://github.com/mmahdib2020-cpu/nezammonitor-windows/releases)
+**نسخه ویندوز:** [GitHub](https://github.com/Barkhordari-dev/nezammonitor-windows/releases)
 
 ## 📱 راهنمای سریع شروع کار
 
@@ -73,12 +73,12 @@
 ## 🛠️ توسعه‌دهندگان
 
 ```bash
-git clone https://github.com/mmahdib2020-cpu/nezammonitor-android.git
+git clone https://github.com/Barkhordari-dev/nezammonitor-android.git
 ```
 
 ## 📞 پشتیبانی
 
 - **توسعه‌دهنده:** مهندس مهدی برخورداری
-- **Issues:** [ایجاد مشکل](https://github.com/mmahdib2020-cpu/nezammonitor-android/issues)
+- **Issues:** [ایجاد مشکل](https://github.com/Barkhordari-dev/nezammonitor-android/issues)
 
 **⚠️ این نرم‌افزار برای ناظرین مکانیک طراحی شده و صدور گزارش‌ها بر اساس نیاز ناظر مکانیک هست.**
