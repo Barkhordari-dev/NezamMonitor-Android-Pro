@@ -113,7 +113,7 @@ fun HomeScreen(
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("uD83DuDD04", fontSize = 28.sp)
+                    Text("🔄", fontSize = 28.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     Text("بروزرسانی", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }

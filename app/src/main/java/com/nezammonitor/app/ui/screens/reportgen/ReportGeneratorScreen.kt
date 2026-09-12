@@ -278,7 +278,26 @@ private fun toEnglishDigits(input: String): String = input.replace("۰","0").rep
 private fun toAsciiDigits(input: String): String = toEnglishDigits(input)
 private fun reverseSlash(input: String): String { if (!input.contains("/")) return input; return input.split("/").reversed().joinToString("/") }
 private fun reverseCaseNumber(cn: String): String { if (!cn.contains("/")) return cn; return cn.split("/").reversed().joinToString("-") }
-private fun toPersianDate(date: Date): String { val cal = java.util.Calendar.getInstance(); cal.time = date; return "${cal.get(java.util.Calendar.YEAR) - 621}/${String.format("%02d", cal.get(java.util.Calendar.MONTH) + 1)}/${String.format("%02d", cal.get(java.util.Calendar.DAY_OF_MONTH))}" }
+private fun toPersianDate(date: Date): String {
+    val cal = java.util.Calendar.getInstance()
+    cal.time = date
+    val gy = cal.get(java.util.Calendar.YEAR)
+    val gm = cal.get(java.util.Calendar.MONTH) + 1
+    val gd = cal.get(java.util.Calendar.DAY_OF_MONTH)
+    val g_d_m = intArrayOf(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
+    val gy2 = if (gm > 2) gy + 1 else gy
+    var days = 355666 + (365 * gy) + ((gy2 + 3) / 4) - ((gy2 + 99) / 100) + ((gy2 + 399) / 400) + gd + g_d_m[gm - 1]
+    var jy = -1595 + (33 * (days / 12053))
+    days %= 12053
+    jy += 4 * (days / 1461)
+    days %= 1461
+    if (days > 365) { jy += (days - 1) / 365; days = (days - 1) % 365 }
+    var jm: Int
+    var jd: Int
+    if (days < 186) { jm = 1 + (days / 31); jd = 1 + (days % 31) }
+    else { jm = 7 + ((days - 186) / 30); jd = 1 + ((days - 186) % 30) }
+    return String.format("%d/%02d/%02d", jy, jm, jd)
+}
 
 // ==================== HISTORY ====================
 
