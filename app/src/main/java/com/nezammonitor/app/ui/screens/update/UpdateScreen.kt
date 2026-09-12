@@ -289,7 +289,7 @@ fun UpdateScreen(
                                             serviceType = safe(fee, "dbm_p_type"),
                                             stage = safe(fee, "dbm_marhala_id"),
                                             amount = safe(fee, "dbm_mablagh"),
-                                            payStatus = safe(fee, "payed"),
+                                            payStatus = when(safe(fee, "payed")) { "yes" -> "پرداخت شده"; "ok" -> "تایید شده"; else -> "پرداخت نشده" },
                                             confirmStatus = safe(fee, "selected"),
                                             description = "${safe(fee, "ozv_name")} ${safe(fee, "ozv_num")}"
                                         ))
