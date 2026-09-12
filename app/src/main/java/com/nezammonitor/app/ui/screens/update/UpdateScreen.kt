@@ -45,6 +45,7 @@ fun UpdateScreen(
 
     // Report save path
     var reportPath by remember { mutableStateOf(prefs.getString("report_path", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath) }
+    var downloadReports by remember { mutableStateOf(false) }
     var showPathDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -106,6 +107,17 @@ fun UpdateScreen(
                     onCheckedChange = { saveCredentials = it }
                 )
                 Text("ذخیره اطلاعات ورود", fontSize = 14.sp)
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(
+                    checked = downloadReports,
+                    onCheckedChange = { downloadReports = it }
+                )
+                Text("بروزرسانی گزارش‌ها (دانلود فایل‌ها)", fontSize = 14.sp)
             }
 
             // Report save path
@@ -312,10 +324,11 @@ fun UpdateScreen(
                             dao.insertFees(allFees)
                             dao.insertReports(allReports)
 
-                            // Download report files
+                            // Download report files (only if checkbox checked)
+                            var downloadedFiles = 0
+                            if (downloadReports) {
                             statusText = "دانلود فایل‌های گزارش‌ها..."
                             progress = 0.85f
-                            var downloadedFiles = 0
                             var caseNum = 0
                             for ((index, apiCase) in apiCases.withIndex()) {
                                 caseNum++
@@ -356,6 +369,7 @@ fun UpdateScreen(
                                     statusText = "دانلود فایل‌ها: ${index + 1}/${apiCases.size} ($downloadedFiles فایل)"
                                 }
                             }
+                            } // end downloadReports
 
                             // Done
                             val now = java.text.SimpleDateFormat("yyyy/MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
