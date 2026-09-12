@@ -26,6 +26,7 @@ import com.nezammonitor.app.ui.screens.home.HomeScreen
 import com.nezammonitor.app.ui.screens.reports.ReportsScreen
 import com.nezammonitor.app.ui.screens.settings.SettingsScreen
 import com.nezammonitor.app.ui.screens.export.ExportScreen
+import com.nezammonitor.app.ui.screens.update.UpdateScreen
 import com.nezammonitor.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
@@ -71,6 +72,19 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                         }
                     )
                 }
+                // Update item
+                NavigationDrawerItem(
+                    icon = { Text("🔄", fontSize = 18.sp) },
+                    label = { Text("بروزرسانی", fontSize = 14.sp) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Update.route) {
+                            popUpTo(Screen.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
         }
     ) {
@@ -196,6 +210,9 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 }
                 composable(Screen.Export.route) {
                     ExportScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.Update.route) {
+                    UpdateScreen(onBack = { navController.popBackStack() })
                 }
             }
         }

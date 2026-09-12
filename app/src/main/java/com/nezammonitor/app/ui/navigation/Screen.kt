@@ -24,6 +24,7 @@ sealed class Screen(val route: String, val title: String, val icon: String) {
     object Settings : Screen("settings", "تنظیمات", "⚙️")
     object Import : Screen("import", "ورود اطلاعات", "📥")
     object Export : Screen("export", "خروجی برای ویندوز", "📤")
+    object Update : Screen("update", "بروزرسانی", "🔄")
 }
 
 val drawerItems = listOf(
