@@ -34,6 +34,7 @@ fun HomeScreen(
     onNavigateToExport: () -> Unit = {},
     onNavigateToUpdate: () -> Unit = {},
     onNavigateToReportGenerator: () -> Unit = {},
+    onNavigateToReportHistory: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -176,7 +177,24 @@ fun HomeScreen(
             }
         }
 
-        // Row 5: Settings
+        // Row 5: Report History
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToReportHistory() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("📦", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("سابقه گزارش\u200Cها", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Row 6: Settings
         item {
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { onNavigateToSettings() },

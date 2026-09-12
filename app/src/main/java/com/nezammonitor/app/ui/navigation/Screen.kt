@@ -23,6 +23,7 @@ sealed class Screen(val route: String, val title: String, val icon: String) {
     }
     object FollowUp : Screen("followup", "پیگیری\u200Cها", "📌")
     object ReportGenerator : Screen("report_generator", "تولید گزارش", "📊")
+    object ReportHistory : Screen("report_history", "سابقه گزارش\u200Cها", "📦")
     object Settings : Screen("settings", "تنظیمات", "⚙️")
     object Import : Screen("import", "ورود اطلاعات", "📥")
     object Export : Screen("export", "خروجی اکسل", "📤")
@@ -37,5 +38,6 @@ val drawerItems = listOf(
     Screen.Reports,
     Screen.FollowUp,
     Screen.ReportGenerator,
+    Screen.ReportHistory,
     Screen.Settings
 )

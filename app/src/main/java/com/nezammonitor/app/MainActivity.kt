@@ -13,7 +13,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
@@ -32,9 +31,6 @@ class MainActivity : ComponentActivity() {
 
         // Request MANAGE_EXTERNAL_STORAGE for Android 11+
         requestStoragePermission()
-
-        // Copy templates to external storage
-        copyTemplatesIfNeeded()
 
         setContent {
             val context = LocalContext.current
@@ -73,35 +69,12 @@ class MainActivity : ComponentActivity() {
                     }
                     startActivity(intent)
                 } catch (_: Exception) {
-                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                    startActivity(intent)
-                }
-            }
-        }
-    }
-
-    private fun copyTemplatesIfNeeded() {
-        try {
-            val prefs = getSharedPreferences("nezam_settings", Context.MODE_PRIVATE)
-            if (prefs.getBoolean("templates_copied", false)) return
-
-            val templatesDir = java.io.File("/storage/emulated/0/NezamMonitor/templates")
-            if (!templatesDir.exists()) templatesDir.mkdirs()
-
-            val templateFiles = listOf("مکانیک مرحله اول.docx", "مکانیک مرحله دوم.docx", "مکانیک مرحله سوم.docx")
-            for (fileName in templateFiles) {
-                val outFile = java.io.File(templatesDir, fileName)
-                if (!outFile.exists()) {
                     try {
-                        assets.open("templates/$fileName").use { input ->
-                            outFile.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
+                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        startActivity(intent)
                     } catch (_: Exception) {}
                 }
             }
-            prefs.edit().putBoolean("templates_copied", true).apply()
-        } catch (_: Exception) {}
+        }
     }
 }

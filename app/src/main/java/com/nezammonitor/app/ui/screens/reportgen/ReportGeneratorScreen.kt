@@ -174,6 +174,28 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             }
                             resultFiles = result.files
                             statusText = result.message
+                            // Save history
+                            if (result.files.isNotEmpty()) {
+                                val historyRecords = cases.filter { it.caseNumber in selectedCases }.mapIndexed { index, case ->
+                                    val rowNum = String.format("%02d", index + 1)
+                                    val reversedCase = reverseCaseNumber(case.caseNumber)
+                                    val safeOwner = case.owner.replace(Regex("[/\\\\:*?\"<>|]"), "_")
+                                    val folderName = "$rowNum - $safeOwner - $reversedCase"
+                                    val folder = File(outputsDir, folderName)
+                                    val stageName = when(selectedStage) { 1 -> "اول"; 2 -> "دوم"; 3 -> "سوم"; else -> "اول" }
+                                    val fileName = "گزارش مرحله $stageName - ${toPersianDate(java.util.Date())}.docx"
+                                    GeneratedReportRecord(
+                                        caseNumber = case.caseNumber,
+                                        owner = case.owner,
+                                        stage = selectedStage,
+                                        createdAt = toPersianDate(java.util.Date()),
+                                        filePath = File(folder, fileName).absolutePath,
+                                        folderPath = folder.absolutePath,
+                                        fileExists = true
+                                    )
+                                }
+                                saveReportHistory(context, historyRecords)
+                            }
                             isGenerating = false
                         }
                     },
@@ -260,7 +282,7 @@ private fun generateReports(
     // Find template
     val stageName = when(stage) { 1 -> "اول"; 2 -> "دوم"; 3 -> "سوم"; else -> "اول" }
     val templateFile = findTemplate(templatesDir, stageName)
-        ?: return GenerateResult(emptyList(), "❌ تمپلیت مرحله $stageName یافت نشد\n${templatesDir.absolutePath}")
+        ?: return GenerateResult(emptyList(), "❌ فایل تمپلیت مرحله $stageName یافت نشد\n\nلطفاً فایل‌های تمپلیت (.docx) را در پوشه زیر قرار دهید:\n${templatesDir.absolutePath}\n\nنام فایل‌ها:\n• مکانیک مرحله اول.docx\n• مکانیک مرحله دوم.docx\n• مکانیک مرحله سوم.docx")
 
     outputsDir.mkdirs()
     val now = Date()
@@ -290,8 +312,6 @@ private fun generateReports(
             replacePlaceholders(outputFile, case, spec, caseEngineers, persianDate, stage)
             files.add(outputFile)
             count++
-
-            // Generate PDF if requested
             if (generatePdf) {
                 val pdfFile = File(folder, "گزارش مرحله $stageName - $persianDate.pdf")
                 try {
@@ -305,7 +325,70 @@ private fun generateReports(
         }
     }
 
+    // Save history
+    val historyRecords = cases.mapIndexed { index, case ->
+        val rowNum = String.format("%02d", index + 1)
+        val reversedCase = reverseCaseNumber(case.caseNumber)
+        val safeOwner = case.owner.replace(Regex("[/\\\\:*?\"<>|]"), "_")
+        val folderName = "$rowNum - $safeOwner - $reversedCase"
+        val folder = File(outputsDir, folderName)
+        val fileName = "گزارش مرحله $stageName - $persianDate.docx"
+        GeneratedReportRecord(
+            caseNumber = case.caseNumber,
+            owner = case.owner,
+            stage = stage,
+            createdAt = persianDate,
+            filePath = File(folder, fileName).absolutePath,
+            folderPath = folder.absolutePath,
+            fileExists = true
+        )
+    }
+    // Note: context is not available here, caller should save history
+
     return GenerateResult(files, "✅ $count گزارش مرحله $stageName تولید شد\n📁 ${outputsDir.absolutePath}")
+}
+
+internal data class GeneratedReportRecord(
+    val caseNumber: String = "",
+    val owner: String = "",
+    val stage: Int = 0,
+    val createdAt: String = "",
+    val filePath: String = "",
+    val folderPath: String = "",
+    val fileExists: Boolean = true
+)
+
+internal fun saveReportHistory(context: Context, records: List<GeneratedReportRecord>) {
+    try {
+        val prefs = context.getSharedPreferences("nezam_report_history", Context.MODE_PRIVATE)
+        val existing = loadReportHistory(context).toMutableList()
+        existing.addAll(records)
+        val json = com.google.gson.Gson().toJson(existing)
+        prefs.edit().putString("history", json).apply()
+    } catch (_: Exception) {}
+}
+
+internal fun loadReportHistory(context: Context): List<GeneratedReportRecord> {
+    return try {
+        val prefs = context.getSharedPreferences("nezam_report_history", Context.MODE_PRIVATE)
+        val json = prefs.getString("history", "[]") ?: "[]"
+        com.google.gson.Gson().fromJson(json, Array<GeneratedReportRecord>::class.java).toList()
+    } catch (_: Exception) { emptyList() }
+}
+
+internal fun deleteReportHistoryItem(context: Context, index: Int) {
+    try {
+        val history = loadReportHistory(context).toMutableList()
+        if (index in history.indices) {
+            val item = history.removeAt(index)
+            // Delete file
+            try { File(item.filePath).delete() } catch (_: Exception) {}
+            try { File(item.folderPath).delete() } catch (_: Exception) {}
+            val json = com.google.gson.Gson().toJson(history)
+            context.getSharedPreferences("nezam_report_history", Context.MODE_PRIVATE)
+                .edit().putString("history", json).apply()
+        }
+    } catch (_: Exception) {}
 }
 
 private fun findTemplate(templatesDir: File, stageName: String): File? {
