@@ -1,8 +1,11 @@
 package com.nezammonitor.app.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,33 +61,22 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Divider()
                 Spacer(modifier = Modifier.height(4.dp))
-                drawerItems.forEach { screen ->
-                    NavigationDrawerItem(
-                        icon = { Text(screen.icon, fontSize = 18.sp) },
-                        label = { Text(screen.title, fontSize = 14.sp) },
-                        selected = false,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            navController.navigate(screen.route) {
-                                popUpTo(Screen.Home.route) { inclusive = false }
-                                launchSingleTop = true
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    drawerItems.forEach { screen ->
+                        NavigationDrawerItem(
+                            icon = { Text(screen.icon, fontSize = 18.sp) },
+                            label = { Text(screen.title, fontSize = 14.sp) },
+                            selected = false,
+                            onClick = {
+                                scope.launch { drawerState.close() }
+                                navController.navigate(screen.route) {
+                                    popUpTo(Screen.Home.route) { inclusive = false }
+                                    launchSingleTop = true
+                                }
                             }
-                        }
-                    )
-                }
-                // Update item
-                NavigationDrawerItem(
-                    icon = { Text("🔄", fontSize = 18.sp) },
-                    label = { Text("بروزرسانی", fontSize = 14.sp) },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Update.route) {
-                            popUpTo(Screen.Home.route) { inclusive = false }
-                            launchSingleTop = true
-                        }
+                        )
                     }
-                )
+                }
             }
         }
     ) {
@@ -100,6 +92,16 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "منو")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            navController.navigate(Screen.Update.route) {
+                                popUpTo(Screen.Home.route) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "بروزرسانی")
                         }
                     }
                 )
