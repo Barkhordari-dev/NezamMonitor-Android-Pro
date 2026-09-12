@@ -30,6 +30,7 @@ import com.nezammonitor.app.ui.screens.reports.ReportsScreen
 import com.nezammonitor.app.ui.screens.settings.SettingsScreen
 import com.nezammonitor.app.ui.screens.export.ExportScreen
 import com.nezammonitor.app.ui.screens.update.UpdateScreen
+import com.nezammonitor.app.ui.screens.reportgen.ReportGeneratorScreen
 import com.nezammonitor.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
@@ -215,6 +216,9 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 }
                 composable(Screen.Update.route) {
                     UpdateScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Screen.ReportGenerator.route) {
+                    ReportGeneratorScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
             }
         }

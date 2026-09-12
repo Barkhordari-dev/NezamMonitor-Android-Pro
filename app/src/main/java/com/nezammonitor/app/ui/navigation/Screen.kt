@@ -21,9 +21,10 @@ sealed class Screen(val route: String, val title: String, val icon: String) {
         fun createRoute(caseNumber: String) = "report_detail/${URLEncoder.encode(caseNumber, "UTF-8")}"
     }
     object FollowUp : Screen("followup", "پیگیری\u200Cها", "📌")
+    object ReportGenerator : Screen("report_generator", "تولید گزارش", "📊")
     object Settings : Screen("settings", "تنظیمات", "⚙️")
     object Import : Screen("import", "ورود اطلاعات", "📥")
-    object Export : Screen("export", "خروجی برای ویندوز", "📤")
+    object Export : Screen("export", "خروجی اکسل", "📤")
     object Update : Screen("update", "بروزرسانی", "🔄")
 }
 
@@ -34,5 +35,6 @@ val drawerItems = listOf(
     Screen.Fees,
     Screen.Reports,
     Screen.FollowUp,
+    Screen.ReportGenerator,
     Screen.Settings
 )

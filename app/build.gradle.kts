@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.nezammonitor.app"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 35
         versionName = "2.0"
@@ -67,6 +67,11 @@ dependencies {
 
     // HTTP client for API
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Apache POI for Word document manipulation
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation("org.apache.poi:poi-ooxml-lite:5.2.5")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

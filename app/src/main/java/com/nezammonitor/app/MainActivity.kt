@@ -24,6 +24,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Copy templates to external storage on first launch
+        copyTemplatesIfNeeded()
+
         setContent {
             val context = LocalContext.current
             val prefs = remember { AppPreferences.load(context) }
@@ -64,5 +68,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun copyTemplatesIfNeeded() {
+        try {
+            val prefs = getSharedPreferences("nezam_settings", Context.MODE_PRIVATE)
+            if (prefs.getBoolean("templates_copied", false)) return
+
+            val templatesDir = java.io.File("/storage/emulated/0/NezamMonitor/templates")
+            templatesDir.mkdirs()
+
+            val templateFiles = listOf("مکانیک مرحله اول.docx", "مکانیک مرحله دوم.docx", "مکانیک مرحله سوم.docx")
+            for (fileName in templateFiles) {
+                val outFile = java.io.File(templatesDir, fileName)
+                if (!outFile.exists()) {
+                    assets.open("templates/$fileName").use { input ->
+                        outFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+            }
+            prefs.edit().putBoolean("templates_copied", true).apply()
+        } catch (_: Exception) {}
     }
 }
