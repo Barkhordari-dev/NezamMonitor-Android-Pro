@@ -46,8 +46,13 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var statusText by remember { mutableStateOf("") }
     var resultFiles by remember { mutableStateOf(listOf<File>()) }
 
-    val templatesDir = File("/storage/emulated/0/NezamMonitor/templates")
-    val outputsDir = File("/storage/emulated/0/NezamMonitor/outputs")
+    val externalTemplatesDir = File("/storage/emulated/0/NezamMonitor/templates")
+    val externalOutputsDir = File("/storage/emulated/0/NezamMonitor/outputs")
+
+    // Use external storage if available, otherwise app-private storage
+    val templatesDir = if (externalTemplatesDir.exists() && externalTemplatesDir.listFiles()?.isNotEmpty() == true) externalTemplatesDir
+        else File(context.getExternalFilesDir(null), "templates").also { it.mkdirs() }
+    val outputsDir = externalOutputsDir.also { it.mkdirs() }
 
     Scaffold(
         topBar = {

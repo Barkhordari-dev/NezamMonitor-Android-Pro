@@ -4,6 +4,7 @@ import java.net.URLEncoder
 
 sealed class Screen(val route: String, val title: String, val icon: String) {
     object Home : Screen("home", "خانه", "🏠")
+    object Update : Screen("update", "بروزرسانی", "🔄")
     object Cases : Screen("cases", "پرونده\u200Cها", "📋")
     object CaseDetail : Screen("case_detail/{caseNumber}", "جزئیات پرونده", "📋") {
         fun createRoute(caseNumber: String) = "case_detail/${URLEncoder.encode(caseNumber, "UTF-8")}"
@@ -25,11 +26,11 @@ sealed class Screen(val route: String, val title: String, val icon: String) {
     object Settings : Screen("settings", "تنظیمات", "⚙️")
     object Import : Screen("import", "ورود اطلاعات", "📥")
     object Export : Screen("export", "خروجی اکسل", "📤")
-    object Update : Screen("update", "بروزرسانی", "🔄")
 }
 
 val drawerItems = listOf(
     Screen.Home,
+    Screen.Update,
     Screen.Cases,
     Screen.Engineers,
     Screen.Fees,

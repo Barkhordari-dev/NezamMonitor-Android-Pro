@@ -5,7 +5,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,16 +93,6 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "منو")
                         }
-                    },
-                    actions = {
-                        IconButton(onClick = {
-                            navController.navigate(Screen.Update.route) {
-                                popUpTo(Screen.Home.route) { inclusive = false }
-                                launchSingleTop = true
-                            }
-                        }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "بروزرسانی")
-                        }
                     }
                 )
             }
@@ -122,8 +111,14 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                         onNavigateToFees = { navController.navigate(Screen.Fees.route) },
                         onNavigateToReports = { navController.navigate(Screen.Reports.route) },
                         onNavigateToFollowUp = { navController.navigate(Screen.FollowUp.route) },
-                        onNavigateToExport = { navController.navigate(Screen.Export.route) }
+                        onNavigateToExport = { navController.navigate(Screen.Export.route) },
+                        onNavigateToUpdate = { navController.navigate(Screen.Update.route) },
+                        onNavigateToReportGenerator = { navController.navigate(Screen.ReportGenerator.route) },
+                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
                     )
+                }
+                composable(Screen.Update.route) {
+                    UpdateScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Screen.Cases.route) {
                     CasesScreen(
@@ -205,6 +200,9 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 composable(Screen.FollowUp.route) {
                     FollowUpScreen(viewModel = viewModel)
                 }
+                composable(Screen.ReportGenerator.route) {
+                    ReportGeneratorScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+                }
                 composable(Screen.Settings.route) {
                     SettingsScreen(viewModel = viewModel)
                 }
@@ -213,12 +211,6 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 }
                 composable(Screen.Export.route) {
                     ExportScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
-                }
-                composable(Screen.Update.route) {
-                    UpdateScreen(onBack = { navController.popBackStack() })
-                }
-                composable(Screen.ReportGenerator.route) {
-                    ReportGeneratorScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
             }
         }

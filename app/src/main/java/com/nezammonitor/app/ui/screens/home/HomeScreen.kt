@@ -31,7 +31,10 @@ fun HomeScreen(
     onNavigateToFees: () -> Unit = {},
     onNavigateToReports: () -> Unit = {},
     onNavigateToFollowUp: () -> Unit = {},
-    onNavigateToExport: () -> Unit = {}
+    onNavigateToExport: () -> Unit = {},
+    onNavigateToUpdate: () -> Unit = {},
+    onNavigateToReportGenerator: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val cases by viewModel.cases.collectAsState()
@@ -152,6 +155,40 @@ fun HomeScreen(
                     Text("📌", fontSize = 24.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("پیگیری\u200Cها", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Row 4: Report Generator
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToReportGenerator() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("📊", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("تولید گزارش", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Row 5: Settings
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToSettings() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("⚙️", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("تنظیمات", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
