@@ -73,6 +73,12 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         DetailRow("شماره پرونده", case?.caseNumber ?: "")
                         DetailRow("سریال", case?.serial ?: "")
                         DetailRow("مالک", case?.owner ?: "")
+                        DetailRow("نام پدر", case?.ownerFather ?: "")
+                        DetailRow("کدملی", case?.ownerNationalCode ?: "")
+                        DetailRow("آدرس مالک", case?.ownerAddress ?: "")
+                        DetailRow("کدپستی", case?.ownerZip ?: "")
+                        DetailRow("تلفن", case?.ownerTel ?: "")
+                        DetailRow("زادگاه", case?.ownerBirthLoc ?: "")
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -91,9 +97,8 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         DetailRow("دفتر", case?.office ?: "")
                         DetailRow("مسئولیت", case?.responsibility ?: "")
                         DetailRow("تاریخ کسر ظرفیت", case?.capacityDate ?: "")
-                        DetailRow("تاریخ گزارش ۱", case?.reportDate1 ?: "")
-                        DetailRow("تاریخ گزارش ۲", case?.reportDate2 ?: "")
-                        DetailRow("تاریخ گزارش ۳", case?.reportDate3 ?: "")
+                        DetailRow("نوع کار", case?.workType ?: "")
+                        DetailRow("رشته", case?.discipline ?: "")
                     }
                 }
             }
@@ -113,7 +118,8 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             DetailRow("تاریخ دستور", spec?.planInstructionDate ?: "")
                             DetailRow("نوع سازه", spec?.structureType ?: "")
                             DetailRow("مساحت زمین", spec?.landArea ?: "")
-                            DetailRow("متراژ پاراف", spec?.parafArea ?: "")
+                            DetailRow("متراژ نظارت", spec?.capacityArea ?: "")
+                            DetailRow("متراژ شهرداری", case?.municipalArea ?: "")
                             DetailRow("عنوان بلوک", spec?.blockTitle ?: "")
                             DetailRow("تعداد بلوک", spec?.blockCount ?: "")
                             DetailRow("تعداد طبقات", spec?.floors ?: "")
