@@ -47,10 +47,10 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    "مانیتور نظام مهندسی",
+                    "برنامه تخصصی مانیتور نظام مهندسی",
                     modifier = Modifier.padding(horizontal = 16.dp),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 16.sp
                 )
                 Text(
                     "مهندس برخورداری",
@@ -85,8 +85,8 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 TopAppBar(
                     title = {
                         Column {
-                            Text("مانیتور نظام مهندسی", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("ساخته شده توسط مهندس برخورداری", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("برنامه تخصصی مانیتور نظام مهندسی", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("مهندس برخورداری", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     navigationIcon = {
