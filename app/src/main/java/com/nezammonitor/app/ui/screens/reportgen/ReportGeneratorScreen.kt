@@ -1,9 +1,6 @@
 package com.nezammonitor.app.ui.screens.reportgen
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import androidx.core.content.FileProvider
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,25 +31,66 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val cases by viewModel.cases.collectAsState()
     val engineers by viewModel.engineers.collectAsState()
-    val reports by viewModel.reports.collectAsState()
     val specs by viewModel.specifications.collectAsState()
     val scope = rememberCoroutineScope()
 
     var selectedStage by remember { mutableIntStateOf(0) }
-    var generatePdf by remember { mutableStateOf(false) }
+    var useLtr by remember { mutableStateOf(false) }
     var selectedCases by remember { mutableStateOf(setOf<String>()) }
     var selectAll by remember { mutableStateOf(false) }
     var isGenerating by remember { mutableStateOf(false) }
     var statusText by remember { mutableStateOf("") }
     var resultFiles by remember { mutableStateOf(listOf<File>()) }
+    var showDuplicateWarning by remember { mutableStateOf(false) }
+    var pendingGeneration by remember { mutableStateOf(false) }
 
-    val externalTemplatesDir = File("/storage/emulated/0/NezamMonitor/templates")
-    val externalOutputsDir = File("/storage/emulated/0/NezamMonitor/outputs")
+    val templatesDir = File("/storage/emulated/0/NezamMonitor/templates")
+    val outputsDir = File("/storage/emulated/0/NezamMonitor/outputs")
+    val templatesExist = templatesDir.exists() && (templatesDir.listFiles()?.any { it.name.endsWith(".docx") } == true)
 
-    // Use external storage if available, otherwise app-private storage
-    val templatesDir = if (externalTemplatesDir.exists() && externalTemplatesDir.listFiles()?.isNotEmpty() == true) externalTemplatesDir
-        else File(context.getExternalFilesDir(null), "templates").also { it.mkdirs() }
-    val outputsDir = externalOutputsDir.also { it.mkdirs() }
+    fun doGenerate() {
+        if (selectedStage == 0 || selectedCases.isEmpty()) {
+            statusText = "لطفاً مرحله و حداقل یک پرونده را انتخاب کنید"
+            return
+        }
+        isGenerating = true
+        statusText = ""
+        resultFiles = emptyList()
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                generateReports(
+                    context = context,
+                    cases = cases.filter { it.caseNumber in selectedCases },
+                    engineers = engineers,
+                    specs = specs,
+                    stage = selectedStage,
+                    useLtr = useLtr,
+                    templatesDir = templatesDir,
+                    outputsDir = outputsDir
+                )
+            }
+            resultFiles = result.files
+            statusText = result.message
+            isGenerating = false
+        }
+    }
+
+    // Duplicate warning dialog
+    if (showDuplicateWarning) {
+        AlertDialog(
+            onDismissRequest = { showDuplicateWarning = false; pendingGeneration = false },
+            title = { Text("⚠️ هشدار") },
+            text = { Text("برخی گزارش‌ها قبلاً تولید شده‌اند. آیا مایلید دوباره تولید کنید؟\nفایل‌های قبلی بازنویسی خواهند شد.") },
+            confirmButton = {
+                TextButton(onClick = { showDuplicateWarning = false; pendingGeneration = false; doGenerate() }) {
+                    Text("تولید مجدد", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDuplicateWarning = false; pendingGeneration = false }) { Text("لغو") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -67,11 +105,63 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp),
+            modifier = Modifier.padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Generate button at top
+            item {
+                Button(
+                    onClick = {
+                        if (selectedStage == 0 || selectedCases.isEmpty()) {
+                            statusText = "لطفاً مرحله و حداقل یک پرونده را انتخاب کنید"
+                            return@Button
+                        }
+                        // Check for duplicates
+                        val stageName = when(selectedStage) { 1 -> "اول"; 2 -> "دوم"; 3 -> "سوم"; else -> "اول" }
+                        val hasDuplicates = cases.filter { it.caseNumber in selectedCases }.any { case ->
+                            val rowNum = String.format("%02d", cases.indexOf(case) + 1)
+                            val reversedCase = reverseCaseNumber(case.caseNumber)
+                            val safeOwner = case.owner.replace(Regex("[/\\\\:*?\"<>|]"), "_")
+                            val folder = File(outputsDir, "$rowNum - $safeOwner - $reversedCase")
+                            folder.exists() && folder.listFiles()?.any { it.name.contains("مرحله $stageName") } == true
+                        }
+                        if (hasDuplicates) {
+                            showDuplicateWarning = true
+                            pendingGeneration = true
+                        } else {
+                            doGenerate()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    enabled = !isGenerating && selectedStage > 0 && selectedCases.isNotEmpty() && templatesExist
+                ) {
+                    if (isGenerating) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text("📊 تولید گزارش", fontSize = 15.sp)
+                }
+            }
+
+            // Template warning
+            if (!templatesExist) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("⚠️ فایل تمپلیت یافت نشد!", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("فایل‌های تمپلیت (.docx) را در پوشه زیر قرار دهید:", fontSize = 12.sp)
+                            Text(templatesDir.absolutePath, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("نام فایل‌ها:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("• مکانیک مرحله اول.docx", fontSize = 11.sp)
+                            Text("• مکانیک مرحله دوم.docx", fontSize = 11.sp)
+                            Text("• مکانیک مرحله سوم.docx", fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+
             // Stage selection
             item {
                 Text("انتخاب مرحله:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -87,15 +177,15 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
 
-            // PDF checkbox
+            // LTR checkbox
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = generatePdf, onCheckedChange = { generatePdf = it })
-                    Text("تولید PDF", fontSize = 14.sp)
+                    Checkbox(checked = useLtr, onCheckedChange = { useLtr = it })
+                    Text("تولید چپ‌چین (LTR)", fontSize = 14.sp)
                 }
             }
 
-            // Template info
+            // Info
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -140,73 +230,9 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         }
                     )
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("${case.owner}", fontSize = 14.sp)
+                        Text(case.owner, fontSize = 14.sp)
                         Text(case.caseNumber, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                }
-            }
-
-            // Generate button
-            item {
-                Button(
-                    onClick = {
-                        if (selectedStage == 0 || selectedCases.isEmpty()) {
-                            statusText = "لطفاً مرحله و حداقل یک پرونده را انتخاب کنید"
-                            return@Button
-                        }
-                        isGenerating = true
-                        statusText = ""
-                        resultFiles = emptyList()
-                        scope.launch {
-                            val result = withContext(Dispatchers.IO) {
-                                generateReports(
-                                    context = context,
-                                    cases = cases.filter { it.caseNumber in selectedCases },
-                                    allCases = cases,
-                                    engineers = engineers,
-                                    reports = reports,
-                                    specs = specs,
-                                    stage = selectedStage,
-                                    generatePdf = generatePdf,
-                                    templatesDir = templatesDir,
-                                    outputsDir = outputsDir
-                                )
-                            }
-                            resultFiles = result.files
-                            statusText = result.message
-                            // Save history
-                            if (result.files.isNotEmpty()) {
-                                val historyRecords = cases.filter { it.caseNumber in selectedCases }.mapIndexed { index, case ->
-                                    val rowNum = String.format("%02d", index + 1)
-                                    val reversedCase = reverseCaseNumber(case.caseNumber)
-                                    val safeOwner = case.owner.replace(Regex("[/\\\\:*?\"<>|]"), "_")
-                                    val folderName = "$rowNum - $safeOwner - $reversedCase"
-                                    val folder = File(outputsDir, folderName)
-                                    val stageName = when(selectedStage) { 1 -> "اول"; 2 -> "دوم"; 3 -> "سوم"; else -> "اول" }
-                                    val fileName = "گزارش مرحله $stageName - ${toPersianDate(java.util.Date())}.docx"
-                                    GeneratedReportRecord(
-                                        caseNumber = case.caseNumber,
-                                        owner = case.owner,
-                                        stage = selectedStage,
-                                        createdAt = toPersianDate(java.util.Date()),
-                                        filePath = File(folder, fileName).absolutePath,
-                                        folderPath = folder.absolutePath,
-                                        fileExists = true
-                                    )
-                                }
-                                saveReportHistory(context, historyRecords)
-                            }
-                            isGenerating = false
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    enabled = !isGenerating && selectedStage > 0 && selectedCases.isNotEmpty()
-                ) {
-                    if (isGenerating) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text("📊 تولید گزارش", fontSize = 15.sp)
                 }
             }
 
@@ -227,27 +253,19 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
             // Result files
             if (resultFiles.isNotEmpty()) {
-                item {
-                    Text("فایل‌های تولید شده:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
+                item { Text("فایل‌های تولید شده:", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                 items(resultFiles) { file ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            try {
-                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(uri, if (file.name.endsWith(".pdf")) "application/pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                    Card(modifier = Modifier.fillMaxWidth().clickable {
+                        try {
+                            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    }) {
+                        Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("📄 ${file.name}", fontSize = 13.sp)
                                 Text(file.parentFile?.name ?: "", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -261,94 +279,179 @@ fun ReportGeneratorScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
 }
 
-// --- Report Generation Logic ---
+// ==================== REPORT GENERATION LOGIC ====================
 
 private data class GenerateResult(val files: List<File>, val message: String)
 
 private fun generateReports(
     context: Context,
     cases: List<CaseEntity>,
-    allCases: List<CaseEntity>,
     engineers: List<EngineerEntity>,
-    reports: List<ReportEntity>,
     specs: List<SpecificationEntity>,
     stage: Int,
-    generatePdf: Boolean,
+    useLtr: Boolean,
     templatesDir: File,
     outputsDir: File
 ): GenerateResult {
     val files = mutableListOf<File>()
-
-    // Find template
     val stageName = when(stage) { 1 -> "اول"; 2 -> "دوم"; 3 -> "سوم"; else -> "اول" }
+
     val templateFile = findTemplate(templatesDir, stageName)
-        ?: return GenerateResult(emptyList(), "❌ فایل تمپلیت مرحله $stageName یافت نشد\n\nلطفاً فایل‌های تمپلیت (.docx) را در پوشه زیر قرار دهید:\n${templatesDir.absolutePath}\n\nنام فایل‌ها:\n• مکانیک مرحله اول.docx\n• مکانیک مرحله دوم.docx\n• مکانیک مرحله سوم.docx")
+        ?: return GenerateResult(emptyList(), "❌ فایل تمپلیت مرحله $stageName یافت نشد\n\nفایل‌های تمپلیت (.docx) را در پوشه زیر قرار دهید:\n${templatesDir.absolutePath}\n\nنام فایل‌ها:\n• مکانیک مرحله اول.docx\n• مکانیک مرحله دوم.docx\n• مکانیک مرحله سوم.docx")
 
     outputsDir.mkdirs()
     val now = Date()
     val persianDate = toPersianDate(now)
+    val englishDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now)
     var count = 0
 
     for ((index, case) in cases.withIndex()) {
         val rowNum = String.format("%02d", index + 1)
         val reversedCase = reverseCaseNumber(case.caseNumber)
         val safeOwner = case.owner.replace(Regex("[/\\\\:*?\"<>|]"), "_")
-        val folderName = "$rowNum - $safeOwner - $reversedCase"
+
+        // Folder naming: RTL = arabic numerals, LTR = english numerals
+        val folderNum = if (useLtr) String.format("%02d", index + 1) else toPersianDigits(rowNum)
+        val folderCase = if (useLtr) toEnglishDigits(reversedCase) else reversedCase.replace(Regex("[0-9]")) { toPersianDigits(it.value) }
+        val folderName = "$folderNum - $safeOwner - $folderCase"
         val folder = File(outputsDir, folderName)
         folder.mkdirs()
 
-        // Get engineers for this case
+        // Get engineers
         val caseEngineers = engineers.filter { it.caseNumber == case.caseNumber }
-
-        // Get specs
         val spec = specs.firstOrNull { it.caseNumber == case.caseNumber }
 
-        // Copy template and replace placeholders
-        val fileName = "گزارش مرحله $stageName - $persianDate.docx"
+        // File naming
+        val reportDate = if (useLtr) englishDate else persianDate
+        val ltrSuffix = if (useLtr) " - LTR" else ""
+        val fileName = "گزارش مرحله $stageName $safeOwner - $reportDate$ltrSuffix.docx"
         val outputFile = File(folder, fileName)
 
         try {
             templateFile.copyTo(outputFile, overwrite = true)
-            replacePlaceholders(outputFile, case, spec, caseEngineers, persianDate, stage)
+            replacePlaceholders(outputFile, case, spec, caseEngineers, persianDate, useLtr)
             files.add(outputFile)
             count++
-            if (generatePdf) {
-                val pdfFile = File(folder, "گزارش مرحله $stageName - $persianDate.pdf")
-                try {
-                    // For now, just note that PDF generation requires a library
-                    // In a real implementation, we'd use iText or similar
-                    // For this version, we'll skip PDF generation but mark the file
-                } catch (_: Exception) {}
-            }
         } catch (e: Exception) {
             return GenerateResult(files, "❌ خطا در تولید گزارش ${case.owner}: ${e.message}")
         }
     }
 
-    // Save history
-    val historyRecords = cases.mapIndexed { index, case ->
-        val rowNum = String.format("%02d", index + 1)
-        val reversedCase = reverseCaseNumber(case.caseNumber)
-        val safeOwner = case.owner.replace(Regex("[/\\\\:*?\"<>|]"), "_")
-        val folderName = "$rowNum - $safeOwner - $reversedCase"
-        val folder = File(outputsDir, folderName)
-        val fileName = "گزارش مرحله $stageName - $persianDate.docx"
-        GeneratedReportRecord(
-            caseNumber = case.caseNumber,
-            owner = case.owner,
-            stage = stage,
-            createdAt = persianDate,
-            filePath = File(folder, fileName).absolutePath,
-            folderPath = folder.absolutePath,
-            fileExists = true
-        )
-    }
-    // Note: context is not available here, caller should save history
-
     return GenerateResult(files, "✅ $count گزارش مرحله $stageName تولید شد\n📁 ${outputsDir.absolutePath}")
 }
 
-internal data class GeneratedReportRecord(
+private fun findTemplate(templatesDir: File, stageName: String): File? {
+    if (!templatesDir.exists()) return null
+    val patterns = listOf("مکانیک مرحله $stageName.docx", "مرحله $stageName.docx")
+    for (pattern in patterns) {
+        val file = File(templatesDir, pattern)
+        if (file.exists()) return file
+    }
+    val allTemplates = templatesDir.listFiles { f -> f.name.endsWith(".docx") } ?: return null
+    return allTemplates.firstOrNull { it.name.contains(stageName) }
+}
+
+private fun replacePlaceholders(docxFile: File, case: CaseEntity, spec: SpecificationEntity?, engineers: List<EngineerEntity>, persianDate: String, useLtr: Boolean) {
+    try {
+        val doc = XWPFDocument(FileInputStream(docxFile))
+        for (para in doc.paragraphs) replaceInParagraph(para, case, spec, engineers, persianDate, useLtr)
+        for (table in doc.tables) for (row in table.rows) for (cell in row.tableCells) for (para in cell.paragraphs) replaceInParagraph(para, case, spec, engineers, persianDate, useLtr)
+        val out = FileOutputStream(docxFile)
+        doc.write(out)
+        out.close()
+        doc.close()
+    } catch (_: Exception) {}
+}
+
+private fun replaceInParagraph(para: org.apache.poi.xwpf.usermodel.XWPFParagraph, case: CaseEntity, spec: SpecificationEntity?, engineers: List<EngineerEntity>, persianDate: String, useLtr: Boolean) {
+    val runs = para.runs
+    if (runs.isEmpty()) return
+    var fullText = runs.joinToString("") { it.text() }
+
+    // Only 13 main placeholders + 4 engineer placeholders
+    val rawReplacements = mapOf(
+        "«کد_نوسازی»" to (spec?.renovationCode ?: ""),
+        "«تاریخ_گزارش»" to persianDate,
+        "«شماره_پرونده»" to case.caseNumber,
+        "«عنوان_بلوک»" to (spec?.blockTitle ?: ""),
+        "«شماره_پروانه»" to (spec?.permitNumber ?: ""),
+        "«تاریخ_صدور_پروانه»" to (spec?.permitDate ?: ""),
+        "«تعداد_بلوک»" to (spec?.blockCount ?: ""),
+        "«نوع_کاربری»" to (spec?.usageType ?: ""),
+        "«نوع_سازه»" to (spec?.structureType ?: ""),
+        "«گروه_ساختمانی»" to (spec?.buildingGroup ?: ""),
+        "«تعداد_طبقات»" to (spec?.floors ?: ""),
+        "«مالک»" to case.owner,
+        "«هماهنگکننده»" to (engineers.firstOrNull { it.discipline.contains("هماهنگ") }?.name ?: ""),
+        // Engineers - only if in template
+        "«ناظر_معماری»" to (engineers.firstOrNull { it.discipline.contains("معمار") }?.name ?: ""),
+        "«ناظر_عمران»" to (engineers.firstOrNull { it.discipline.contains("عمران") }?.name ?: ""),
+        "«ناظر_مکانیک»" to (engineers.firstOrNull { it.discipline.contains("مکانیک") || it.discipline.contains("مكانيك") }?.name ?: ""),
+        "«ناظر_برق»" to (engineers.firstOrNull { it.discipline.contains("برق") }?.name ?: "")
+    )
+
+    // Apply LTR transformation
+    val replacements = if (useLtr) {
+        rawReplacements.mapValues { (key, value) ->
+            if (key in listOf("«شماره_پرونده»", "«شماره_پروانه»", "«تاریخ_گزارش»", "«تاریخ_صدور_پروانه»", "«کد_نوسازی»", "«تعداد_بلوک»", "«تعداد_طبقات»")) {
+                toEnglishDigits(reverseSlash(toAsciiDigits(value)))
+            } else value
+        }
+    } else {
+        rawReplacements.mapValues { (key, value) ->
+            if (key in listOf("«شماره_پرونده»", "«شماره_پروانه»", "«تاریخ_گزارش»", "«تاریخ_صدور_پروانه»", "«کد_نوسازی»", "«تعداد_بلوک»", "«تعداد_طبقات»")) {
+                toPersianDigits(value)
+            } else value
+        }
+    }
+
+    for ((key, value) in replacements) fullText = fullText.replace(key, value)
+
+    if (runs.isNotEmpty()) {
+        runs[0].setText(fullText, 0)
+        for (i in 1 until runs.size) runs[i].setText("", 0)
+    }
+}
+
+// ==================== DIGIT CONVERSION ====================
+
+private fun toPersianDigits(input: String): String = input
+    .replace("0", "۰").replace("1", "۱").replace("2", "۲").replace("3", "۳").replace("4", "۴")
+    .replace("5", "۵").replace("6", "۶").replace("7", "۷").replace("8", "۸").replace("9", "۹")
+
+private fun toEnglishDigits(input: String): String = input
+    .replace("۰", "0").replace("۱", "1").replace("۲", "2").replace("۳", "3").replace("۴", "4")
+    .replace("۵", "5").replace("۶", "6").replace("۷", "7").replace("۸", "8").replace("۹", "9")
+
+private fun toAsciiDigits(input: String): String = input
+    .replace("۰", "0").replace("۱", "1").replace("۲", "2").replace("۳", "3").replace("۴", "4")
+    .replace("۵", "5").replace("۶", "6").replace("۷", "7").replace("۸", "8").replace("۹", "9")
+
+private fun reverseSlash(input: String): String {
+    if (!input.contains("/")) return input
+    val parts = input.split("/")
+    return parts.reversed().joinToString("/")
+}
+
+private fun reverseCaseNumber(caseNumber: String): String {
+    if (!caseNumber.contains("/")) return caseNumber
+    val parts = caseNumber.split("/")
+    return parts.reversed().joinToString("-")
+}
+
+private fun toPersianDate(date: Date): String {
+    val cal = java.util.Calendar.getInstance()
+    cal.time = date
+    val year = cal.get(java.util.Calendar.YEAR)
+    val month = cal.get(java.util.Calendar.MONTH) + 1
+    val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
+    val jy = year - 621
+    return "$jy/${String.format("%02d", month)}/${String.format("%02d", day)}"
+}
+
+// ==================== HISTORY ====================
+
+data class GeneratedReportRecord(
     val caseNumber: String = "",
     val owner: String = "",
     val stage: Int = 0,
@@ -381,7 +484,6 @@ internal fun deleteReportHistoryItem(context: Context, index: Int) {
         val history = loadReportHistory(context).toMutableList()
         if (index in history.indices) {
             val item = history.removeAt(index)
-            // Delete file
             try { File(item.filePath).delete() } catch (_: Exception) {}
             try { File(item.folderPath).delete() } catch (_: Exception) {}
             val json = com.google.gson.Gson().toJson(history)
@@ -389,121 +491,4 @@ internal fun deleteReportHistoryItem(context: Context, index: Int) {
                 .edit().putString("history", json).apply()
         }
     } catch (_: Exception) {}
-}
-
-private fun findTemplate(templatesDir: File, stageName: String): File? {
-    if (!templatesDir.exists()) return null
-    val patterns = listOf(
-        "مکانیک مرحله $stageName.docx",
-        "مرحله $stageName.docx"
-    )
-    for (pattern in patterns) {
-        val file = File(templatesDir, pattern)
-        if (file.exists()) return file
-    }
-    // Fuzzy match
-    val allTemplates = templatesDir.listFiles { f -> f.name.endsWith(".docx") } ?: return null
-    return allTemplates.firstOrNull { it.name.contains(stageName) }
-}
-
-private fun replacePlaceholders(docxFile: File, case: CaseEntity, spec: SpecificationEntity?, engineers: List<EngineerEntity>, persianDate: String, stage: Int) {
-    try {
-        val doc = XWPFDocument(FileInputStream(docxFile))
-
-        // Replace in paragraphs
-        for (para in doc.paragraphs) {
-            replaceInParagraph(para, case, spec, engineers, persianDate)
-        }
-
-        // Replace in tables
-        for (table in doc.tables) {
-            for (row in table.rows) {
-                for (cell in row.tableCells) {
-                    for (para in cell.paragraphs) {
-                        replaceInParagraph(para, case, spec, engineers, persianDate)
-                    }
-                }
-            }
-        }
-
-        // Save
-        val out = FileOutputStream(docxFile)
-        doc.write(out)
-        out.close()
-        doc.close()
-    } catch (_: Exception) {}
-}
-
-private fun replaceInParagraph(para: org.apache.poi.xwpf.usermodel.XWPFParagraph, case: CaseEntity, spec: SpecificationEntity?, engineers: List<EngineerEntity>, persianDate: String) {
-    // Get full text
-    val runs = para.runs
-    if (runs.isEmpty()) return
-    var fullText = runs.joinToString("") { it.text() }
-
-    val replacements = mapOf(
-        "«شماره_پرونده»" to case.caseNumber,
-        "«شماره_سریال»" to case.serial,
-        "«مالک»" to case.owner,
-        "«همراه»" to case.ownerMobile,
-        "«مسئولیت»" to case.responsibility,
-        "«کد_نوسازی»" to (spec?.renovationCode ?: ""),
-        "«تاریخ_گزارش»" to persianDate,
-        "«شماره_پروانه»" to (spec?.permitNumber ?: ""),
-        "«تاریخ_صدور_پروانه»" to (spec?.permitDate ?: ""),
-        "«تاریخ_ترخیص»" to (spec?.releaseDate ?: ""),
-        "«نوع_کاربری»" to (spec?.usageType ?: ""),
-        "«گروه_ساختمانی»" to (spec?.buildingGroup ?: ""),
-        "«نوع_سازه»" to (spec?.structureType ?: ""),
-        "«عنوان_بلوک»" to (spec?.blockTitle ?: ""),
-        "«صادرکننده_پروانه»" to (spec?.issuer ?: ""),
-        "«محدوده_طرح»" to (spec?.planZone ?: ""),
-        "«آدرس»" to (spec?.address ?: ""),
-        "«تعداد_بلوک»" to (spec?.blockCount ?: ""),
-        "«تعداد_طبقات»" to (spec?.floors ?: ""),
-        "«تعداد_واحد»" to (spec?.units ?: ""),
-        "«مساحت_زمین»" to (spec?.landArea ?: ""),
-        "«ناظر_معماری»" to (engineers.firstOrNull { it.discipline.contains("معمار") }?.name ?: ""),
-        "«ناظر_عمران»" to (engineers.firstOrNull { it.discipline.contains("عمران") }?.name ?: ""),
-        "«ناظر_مکانیک»" to (engineers.firstOrNull { it.discipline.contains("مکانیک") || it.discipline.contains("مكانيك") }?.name ?: ""),
-        "«ناظر_برق»" to (engineers.firstOrNull { it.discipline.contains("برق") }?.name ?: ""),
-        "«هماهنگکننده»" to (engineers.firstOrNull { it.discipline.contains("هماهنگ") }?.name ?: "")
-    )
-
-    for ((key, value) in replacements) {
-        fullText = fullText.replace(key, value)
-    }
-
-    // Set text in first run, clear rest
-    if (runs.isNotEmpty()) {
-        runs[0].setText(toPersianDigits(fullText), 0)
-        for (i in 1 until runs.size) {
-            runs[i].setText("", 0)
-        }
-    }
-}
-
-private fun toPersianDigits(input: String): String {
-    return input
-        .replace("0", "۰").replace("1", "۱").replace("2", "۲")
-        .replace("3", "۳").replace("4", "۴").replace("5", "۵")
-        .replace("6", "۶").replace("7", "۷").replace("8", "۸").replace("9", "۹")
-}
-
-private fun toPersianDate(date: Date): String {
-    val cal = java.util.Calendar.getInstance()
-    cal.time = date
-    val year = cal.get(java.util.Calendar.YEAR)
-    val month = cal.get(java.util.Calendar.MONTH) + 1
-    val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
-    // Simple Persian date approximation (Shamsi)
-    val jy = year - 621
-    val jm = month
-    val jd = day
-    return "$jy/${String.format("%02d", jm)}/${String.format("%02d", jd)}"
-}
-
-private fun reverseCaseNumber(caseNumber: String): String {
-    if (!caseNumber.contains("/")) return caseNumber
-    val parts = caseNumber.split("/")
-    return parts.reversed().joinToString("-")
 }

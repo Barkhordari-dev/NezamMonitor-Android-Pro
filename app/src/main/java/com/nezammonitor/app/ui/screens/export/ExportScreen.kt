@@ -2,7 +2,6 @@ package com.nezammonitor.app.ui.screens.export
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -20,7 +19,9 @@ import com.nezammonitor.app.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -70,7 +71,7 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("📊 خروجی اکسل", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("فایل اکسل شامل تمام اطلاعات پرونده\u200Cها، مهندسین، حق\u200Cالزحمه، گزارش\u200Cها و تغییرات پیگیری.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("فایل اکسل شامل ۵ شیت: پرونده\u200Cها، ناظرین، حق\u200Cالزحمه، گزارش\u200Cها، پیگیری\u200Cها", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -94,6 +95,10 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 enabled = !isExporting
             ) {
+                if (isExporting) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Text(if (isExporting) "⏳ در حال ایجاد..." else "📊 ایجاد فایل اکسل", fontSize = 15.sp)
             }
 
@@ -103,7 +108,7 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         val file = lastExportedFile ?: return@Button
                         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                         val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/vnd.ms-excel"
+                            type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                             putExtra(Intent.EXTRA_STREAM, uri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             setPackage(null)
@@ -126,6 +131,8 @@ fun ExportScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
 }
 
+// ==================== EXCEL GENERATION WITH APACHE POI ====================
+
 private fun createExcelExport(
     context: Context,
     cases: List<CaseEntity>,
@@ -138,80 +145,85 @@ private fun createExcelExport(
     return try {
         val dir = File(context.getExternalFilesDir(null), "exports")
         dir.mkdirs()
-        val fileName = "NezamMonitor_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.xls"
+        val fileName = "NezamMonitor_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.xlsx"
         val file = File(dir, fileName)
 
-        // Create HTML-based Excel (xls format that Excel can open)
-        val sb = StringBuilder()
-        sb.append("<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'>")
-        sb.append("<head><meta charset='utf-8'>")
-        sb.append("<style>td{mso-number-format:\\@;}</style>")
-        sb.append("</head><body>")
+        val wb = XSSFWorkbook()
 
-        // Sheet 1: Cases
-        sb.append("<table border=1><caption><b>پرونده‌ها</b></caption>")
-        sb.append("<tr>")
-        listOf("ردیف","شماره پرونده","شماره سریال","نام مالک","شماره همراه","وضعیت","تاریخ کسر","دفتر",
-            "نام پدر","کدملی","آدرس","کدپستی","تلفن","زادگاه","شماره پروانه","تاریخ پروانه",
-            "کد nosazi","آدرس پروژه","بلوک","متراژ","متراژ شهرداری","متراژ نظارت","طبقات","واحدها",
-            "گروه ساختمان","نوع سازه","نوع کاربری","محدوده طرح","صدور","وضعیت","نوع کار","رشته","تاریخ اجرا","شناسه DB"
-        ).forEach { sb.append("<th><b>$it</b></th>") }
-        sb.append("</tr>")
-        cases.forEachIndexed { i, c ->
-            sb.append("<tr>")
-            listOf("${i+1}", c.caseNumber, c.serial, c.owner, c.ownerMobile, c.responsibility, c.capacityDate, c.office,
+        // Sheet 1: پرونده‌ها
+        val ws1 = wb.createSheet("پرونده\u200Cها")
+        val headers1 = arrayOf("ردیف", "شماره پرونده", "شماره سریال", "نام مالک", "شماره همراه", "وضعیت", "تاریخ کسر", "دفتر",
+            "نام پدر", "کدملی", "آدرس", "کدپستی", "تلفن", "زادگاه", "شماره پروانه", "تاریخ پروانه",
+            "کد نوسازی", "آدرس پروژه", "بلوک", "متراژ", "متراژ شهرداری", "متراژ نظارت", "طبقات", "واحدها",
+            "گروه ساختمان", "نوع سازه", "نوع کاربری", "محدوده طرح", "صدور", "وضعیت", "نوع کار", "رشته", "تاریخ اجرا", "شناسه DB")
+        val headerRow1 = ws1.createRow(0)
+        headers1.forEachIndexed { i, h -> val cell = headerRow1.createCell(i); cell.setCellValue(h) }
+        cases.forEachIndexed { r, c ->
+            val row = ws1.createRow(r + 1)
+            val values = arrayOf((r + 1).toString(), c.caseNumber, c.serial, c.owner, c.ownerMobile, c.responsibility, c.capacityDate, c.office,
                 c.ownerFather, c.ownerNationalCode, c.ownerAddress, c.ownerZip, c.ownerTel, c.ownerBirthLoc,
                 c.permitNumber, c.permitDate, c.renovationCode, c.address, c.blockNumber, c.landArea,
                 c.municipalArea, c.effectiveArea, c.floors, c.units, c.buildingGroup, c.structureType,
-                c.usageType, c.planZone, c.issuer, c.stateTitle, c.workType, c.discipline, c.executionDate, c.dbId
-            ).forEach { sb.append("<td>$it</td>") }
-            sb.append("</tr>")
+                c.usageType, c.planZone, c.issuer, c.stateTitle, c.workType, c.discipline, c.executionDate, c.dbId)
+            values.forEachIndexed { i, v -> row.createCell(i).setCellValue(v) }
         }
-        sb.append("</table><br><br>")
 
-        // Sheet 2: Engineers
-        sb.append("<table border=1><caption><b>مهندسان</b></caption>")
-        sb.append("<tr><th><b>ردیف</b></th><th><b>شماره پرونده</b></th><th><b>رشته</b></th><th><b>نام</b></th></tr>")
-        engineers.forEachIndexed { i, e ->
-            sb.append("<tr><td>${i+1}</td><td>${e.caseNumber}</td><td>${e.discipline}</td><td>${e.name}</td></tr>")
+        // Sheet 2: ناظرین
+        val ws2 = wb.createSheet("ناظرین")
+        val headers2 = arrayOf("ردیف", "شماره پرونده", "نام مالک", "رشته", "نام ناظر")
+        val headerRow2 = ws2.createRow(0)
+        headers2.forEachIndexed { i, h -> val cell = headerRow2.createCell(i); cell.setCellValue(h) }
+        engineers.forEachIndexed { r, e ->
+            val row = ws2.createRow(r + 1)
+            val caseOwner = cases.firstOrNull { it.caseNumber == e.caseNumber }?.owner ?: ""
+            arrayOf((r + 1).toString(), e.caseNumber, caseOwner, e.discipline, e.name).forEachIndexed { i, v -> row.createCell(i).setCellValue(v) }
         }
-        sb.append("</table><br><br>")
 
-        // Sheet 3: Fees
-        sb.append("<table border=1><caption><b>حق‌الزحمه</b></caption>")
-        sb.append("<tr><th><b>ردیف</b></th><th><b>شماره پرونده</b></th><th><b>رشته</b></th><th><b>مبلغ</b></th><th><b>وضعیت پرداخت</b></th><th><b>توضیحات</b></th></tr>")
-        fees.forEachIndexed { i, f ->
-            sb.append("<tr><td>${i+1}</td><td>${f.caseNumber}</td><td>${f.discipline}</td><td>${f.amount}</td><td>${f.payStatus}</td><td>${f.description}</td></tr>")
+        // Sheet 3: حق‌الزحمه
+        val ws3 = wb.createSheet("حق\u200Cالزحمه")
+        val headers3 = arrayOf("ردیف", "شماره پرونده", "نام مالک", "رشته", "مبلغ", "وضعیت پرداخت", "توضیحات")
+        val headerRow3 = ws3.createRow(0)
+        headers3.forEachIndexed { i, h -> val cell = headerRow3.createCell(i); cell.setCellValue(h) }
+        fees.forEachIndexed { r, f ->
+            val row = ws3.createRow(r + 1)
+            val caseOwner = cases.firstOrNull { it.caseNumber == f.caseNumber }?.owner ?: ""
+            arrayOf((r + 1).toString(), f.caseNumber, caseOwner, f.discipline, f.amount, f.payStatus, f.description).forEachIndexed { i, v -> row.createCell(i).setCellValue(v) }
         }
-        sb.append("</table><br><br>")
 
-        // Sheet 4: Reports
-        sb.append("<table border=1><caption><b>گزارش‌ها</b></caption>")
-        sb.append("<tr><th><b>ردیف</b></th><th><b>شماره پرونده</b></th><th><b>نوع گزارش</b></th><th><b>مرحله</b></th><th><b>مهندس</b></th><th><b>رشته</b></th><th><b>تاریخ</b></th><th><b>سقف</b></th><th><b>اندیکاتور</b></th></tr>")
-        reports.forEachIndexed { i, r ->
-            sb.append("<tr><td>${i+1}</td><td>${r.caseNumber}</td><td>${r.reportType}</td><td>${r.stage}</td><td>${r.engineer}</td><td>${r.discipline}</td><td>${r.visitDate}</td><td>${r.ceilingCount}</td><td>${r.indicator}</td></tr>")
+        // Sheet 4: گزارش‌ها
+        val ws4 = wb.createSheet("گزارش\u200Cها")
+        val headers4 = arrayOf("ردیف", "شماره پرونده", "نام مالک", "نوع گزارش", "مرحله", "مهندس", "رشته", "تاریخ", "سقف", "اندیکاتور")
+        val headerRow4 = ws4.createRow(0)
+        headers4.forEachIndexed { i, h -> val cell = headerRow4.createCell(i); cell.setCellValue(h) }
+        reports.forEachIndexed { r, rpt ->
+            val row = ws4.createRow(r + 1)
+            val caseOwner = cases.firstOrNull { it.caseNumber == rpt.caseNumber }?.owner ?: ""
+            arrayOf((r + 1).toString(), rpt.caseNumber, caseOwner, rpt.reportType, rpt.stage, rpt.engineer, rpt.discipline, rpt.visitDate, rpt.ceilingCount, rpt.indicator).forEachIndexed { i, v -> row.createCell(i).setCellValue(v) }
         }
-        sb.append("</table><br><br>")
 
-        // Sheet 5: Specifications
-        sb.append("<table border=1><caption><b>مشخصات</b></caption>")
-        sb.append("<tr><th><b>ردیف</b></th><th><b>شماره پرونده</b></th><th><b>آدرس</b></th><th><b>گروه ساختمان</b></th><th><b>کد نوسازی</b></th><th><b>شماره پروانه</b></th><th><b>تاریخ پروانه</b></th><th><b>متراژ زمین</b></th><th><b>متراژ نظارت</b></th><th><b>نوع سازه</b></th><th><b>بلوک</b></th><th><b>طبقات</b></th><th><b>واحدها</b></th><th><b>صدور</b></th><th><b>محدوده</b></th><th><b>نوع کاربری</b></th></tr>")
-        specs.forEachIndexed { i, s ->
-            sb.append("<tr><td>${i+1}</td><td>${s.caseNumber}</td><td>${s.address}</td><td>${s.buildingGroup}</td><td>${s.renovationCode}</td><td>${s.permitNumber}</td><td>${s.permitDate}</td><td>${s.landArea}</td><td>${s.capacityArea}</td><td>${s.structureType}</td><td>${s.blockTitle}</td><td>${s.floors}</td><td>${s.units}</td><td>${s.issuer}</td><td>${s.planZone}</td><td>${s.usageType}</td></tr>")
+        // Sheet 5: پیگیری
+        val ws5 = wb.createSheet("پیگیری\u200Cها")
+        val headers5 = arrayOf("ردیف", "شماره پرونده", "نام مالک", "آدرس", "همراه", "توضیحات")
+        val headerRow5 = ws5.createRow(0)
+        headers5.forEachIndexed { i, h -> val cell = headerRow5.createCell(i); cell.setCellValue(h) }
+        edits.forEachIndexed { r, e ->
+            val row = ws5.createRow(r + 1)
+            val case = cases.firstOrNull { it.caseNumber == e.caseNumber }
+            arrayOf((r + 1).toString(), e.caseNumber, case?.owner ?: "", case?.address ?: "", case?.ownerMobile ?: "", e.description).forEachIndexed { i, v -> row.createCell(i).setCellValue(v) }
         }
-        sb.append("</table><br><br>")
 
-        // Sheet 6: Follow-up Edits
-        sb.append("<table border=1><caption><b>تغییرات پیگیری</b></caption>")
-        sb.append("<tr><th><b>ردیف</b></th><th><b>شماره پرونده</b></th><th><b>توضیحات</b></th><th><b>شماره پرونده (ویرایش)</b></th><th><b>نام مالک (ویرایش)</b></th><th><b>آدرس (ویرایش)</b></th><th><b>شماره همراه (ویرایش)</b></th></tr>")
-        edits.forEachIndexed { i, e ->
-            sb.append("<tr><td>${i+1}</td><td>${e.caseNumber}</td><td>${e.description}</td><td>${e.caseNumberEdit}</td><td>${e.ownerEdit}</td><td>${e.addressEdit}</td><td>${e.ownerMobileEdit}</td></tr>")
+        // Auto-size columns
+        for (ws in listOf(ws1, ws2, ws3, ws4, ws5)) {
+            for (i in 0 until (ws.getRow(0)?.lastCellNum?.toInt() ?: 0)) {
+                ws.autoSizeColumn(i)
+            }
         }
-        sb.append("</table>")
 
-        sb.append("</body></html>")
+        val out = FileOutputStream(file)
+        wb.write(out)
+        out.close()
+        wb.close()
 
-        file.writeText(sb.toString(), Charsets.UTF_8)
         Pair(true, file.absolutePath)
     } catch (e: Exception) {
         Pair(false, "خطا: ${e.message}")
