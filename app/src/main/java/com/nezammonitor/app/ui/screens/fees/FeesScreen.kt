@@ -45,7 +45,10 @@ fun FeesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit = {}) {
     val fees by viewModel.fees.collectAsState()
     val cases by viewModel.cases.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCaseNumber by remember { mutableStateOf<String?>(null) }
+    var selectedFees by remember { mutableStateOf(setOf<Long>()) }
 
+    // Group fees by case with correct ordering (API order preserved by DB)
     val groups = remember(fees, cases, searchQuery) {
         val grouped = mutableMapOf<String, MutableList<FeeEntity>>()
         fees.forEach { grouped.getOrPut(it.caseNumber) { mutableListOf() }.add(it) }
@@ -56,7 +59,11 @@ fun FeesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit = {}) {
             val confirmed = caseFees.filter { it.payStatus.contains("تایید") || it.confirmStatus.contains("تایید") }.sumOf { parseAmount(it.amount) }
             FeeCaseGroup(caseNum, case?.owner ?: "", caseFees, total, paid, confirmed, total - paid - confirmed)
         }.filter { g -> searchQuery.isBlank() || g.caseNumber.contains(searchQuery, true) || g.owner.contains(searchQuery, true) }
-         .sortedBy { it.caseNumber }
+    }
+
+    // Calculate selected total
+    val selectedTotal = remember(fees, selectedFees) {
+        fees.filter { it.id in selectedFees }.sumOf { parseAmount(it.amount) }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -72,7 +79,16 @@ fun FeesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit = {}) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
-            Text("${groups.size} پرونده | ${fees.size} ردیف", modifier = Modifier.padding(12.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("${groups.size} پرونده | ${fees.size} ردیف", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                if (selectedFees.isNotEmpty()) {
+                    Text("انتخاب: ${selectedFees.size} | ${formatAmount(selectedTotal)}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -83,7 +99,10 @@ fun FeesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit = {}) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(groups, key = { it.caseNumber }) { group ->
-                Card(modifier = Modifier.fillMaxWidth().clickable { onCaseClick(group.caseNumber) }) {
+                val isExpanded = selectedCaseNumber == group.caseNumber
+                Card(modifier = Modifier.fillMaxWidth().clickable {
+                    selectedCaseNumber = if (isExpanded) null else group.caseNumber
+                }) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column {
@@ -100,6 +119,50 @@ fun FeesScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit = {}) {
                             if (group.paidAmount > 0) Text("پرداخت: ${formatAmount(group.paidAmount)}", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
                             if (group.confirmedAmount > 0) Text("تأیید: ${formatAmount(group.confirmedAmount)}", fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary)
                             if (group.pendingAmount > 0) Text("انتظار: ${formatAmount(group.pendingAmount)}", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
+                        }
+
+                        // Expanded fee details
+                        if (isExpanded) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Divider()
+                            Spacer(modifier = Modifier.height(4.dp))
+                            group.fees.forEach { fee ->
+                                val isSelected = fee.id in selectedFees
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = isSelected,
+                                        onCheckedChange = { checked ->
+                                            selectedFees = if (checked) selectedFees + fee.id else selectedFees - fee.id
+                                        }
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("${fee.discipline} - ${fee.amountType}", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                        Text("مرحله: ${fee.stage} | ${fee.payStatus}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Text(fee.amount, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            // Select all for this case
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("انتخاب همه", fontSize = 11.sp)
+                                Checkbox(
+                                    checked = group.fees.all { it.id in selectedFees },
+                                    onCheckedChange = { checked ->
+                                        selectedFees = if (checked)
+                                            selectedFees + group.fees.map { it.id }.toSet()
+                                        else
+                                            selectedFees - group.fees.map { it.id }.toSet()
+                                    }
+                                )
+                            }
                         }
                     }
                 }

@@ -175,11 +175,11 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("${fee.discipline} - ${fee.serviceType}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("${fee.discipline} - ${fee.amountType}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 Text(fee.amount, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
                             }
                             Text("مرحله: ${fee.stage}", fontSize = 12.sp)
-                            Text("وضعیت: ${fee.payStatus} | تأیید: ${fee.confirmStatus}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("پرداخت: ${fee.payStatus} | تأیید: ${fee.confirmStatus}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (fee.description.isNotBlank()) {
                                 Text("توضیحات: ${fee.description}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

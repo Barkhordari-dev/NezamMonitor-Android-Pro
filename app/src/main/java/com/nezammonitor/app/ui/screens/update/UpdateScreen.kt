@@ -283,15 +283,35 @@ fun UpdateScreen(
                                 if (dbId.toIntOrNull() != null) {
                                     val feeResult = api.getFees(dbId.toInt())
                                     feeResult.getOrNull()?.forEach { fee ->
+                                        val dbmPType = safe(fee, "dbm_p_type")
+                                        val amountType = when(dbmPType) {
+                                            "n" -> "نظارت"
+                                            "b" -> "بیمه"
+                                            "ho" -> "حسن انجام کار"
+                                            "t" -> "مالیات نظارت سهم سازمان"
+                                            "pn" -> "نظارت سهم سازمان"
+                                            else -> dbmPType
+                                        }
+                                        val selected = safe(fee, "selected")
+                                        val confirmStatus = if (selected == "1") "تایید شده" else ""
+                                        val amount = safe(fee, "dbm_mablagh")
+                                        val formattedAmount = try {
+                                            val num = amount.toLong()
+                                            "%,d".format(num) + " ریال"
+                                        } catch (e: Exception) { amount }
+
                                         allFees.add(FeeEntity(
                                             caseNumber = caseNumber,
                                             discipline = safe(fee, "mas_title"),
-                                            serviceType = safe(fee, "dbm_p_type"),
+                                            serviceType = when(safe(fee, "tnh_type")) { "n" -> "نظارت"; else -> safe(fee, "tnh_type") },
                                             stage = safe(fee, "dbm_marhala_id"),
-                                            amount = safe(fee, "dbm_mablagh"),
+                                            startDate = safe(fee, "sanad_date"),
+                                            endDate = safe(fee, "pardakht_date"),
+                                            amount = formattedAmount,
                                             payStatus = when(safe(fee, "payed")) { "yes" -> "پرداخت شده"; "ok" -> "تایید شده"; else -> "پرداخت نشده" },
-                                            confirmStatus = safe(fee, "selected"),
-                                            description = "${safe(fee, "ozv_name")} ${safe(fee, "ozv_num")}"
+                                            confirmStatus = confirmStatus,
+                                            amountType = amountType,
+                                            description = ""
                                         ))
                                     }
                                 }

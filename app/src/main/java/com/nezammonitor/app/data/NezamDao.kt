@@ -6,10 +6,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NezamDao {
     // Cases - sort by year DESC, number ASC
-    @Query("SELECT * FROM cases ORDER BY CAST(SUBSTR(caseNumber, 1, INSTR(caseNumber, '/') - 1) AS INTEGER) DESC, CAST(SUBSTR(caseNumber, INSTR(caseNumber, '/') + 1) AS INTEGER) ASC")
+    @Query("SELECT * FROM cases ORDER BY id ASC")
     fun getAllCases(): Flow<List<CaseEntity>>
     
-    @Query("SELECT * FROM cases WHERE caseNumber LIKE '%' || :query || '%' OR owner LIKE '%' || :query || '%' ORDER BY CAST(SUBSTR(caseNumber, 1, INSTR(caseNumber, '/') - 1) AS INTEGER) DESC, CAST(SUBSTR(caseNumber, INSTR(caseNumber, '/') + 1) AS INTEGER) ASC")
+    @Query("SELECT * FROM cases WHERE caseNumber LIKE '%' || :query || '%' OR owner LIKE '%' || :query || '%' ORDER BY id ASC")
     fun searchCases(query: String): Flow<List<CaseEntity>>
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -35,7 +35,7 @@ interface NezamDao {
     @Query("SELECT * FROM engineers WHERE caseNumber = :caseNumber")
     suspend fun getEngineersForCase(caseNumber: String): List<EngineerEntity>
     
-    @Query("SELECT * FROM engineers ORDER BY CAST(SUBSTR(caseNumber, 1, INSTR(caseNumber, '/') - 1) AS INTEGER) DESC, CAST(SUBSTR(caseNumber, INSTR(caseNumber, '/') + 1) AS INTEGER) ASC")
+    @Query("SELECT * FROM engineers ORDER BY id ASC")
     fun getAllEngineers(): Flow<List<EngineerEntity>>
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -48,7 +48,7 @@ interface NezamDao {
     @Query("SELECT * FROM fees WHERE caseNumber = :caseNumber")
     suspend fun getFeesForCase(caseNumber: String): List<FeeEntity>
     
-    @Query("SELECT * FROM fees ORDER BY CAST(SUBSTR(caseNumber, 1, INSTR(caseNumber, '/') - 1) AS INTEGER) DESC, CAST(SUBSTR(caseNumber, INSTR(caseNumber, '/') + 1) AS INTEGER) ASC")
+    @Query("SELECT * FROM fees ORDER BY id ASC")
     fun getAllFees(): Flow<List<FeeEntity>>
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -61,7 +61,7 @@ interface NezamDao {
     @Query("SELECT * FROM reports WHERE caseNumber = :caseNumber")
     suspend fun getReportsForCase(caseNumber: String): List<ReportEntity>
     
-    @Query("SELECT * FROM reports ORDER BY CAST(SUBSTR(caseNumber, 1, INSTR(caseNumber, '/') - 1) AS INTEGER) DESC, CAST(SUBSTR(caseNumber, INSTR(caseNumber, '/') + 1) AS INTEGER) ASC")
+    @Query("SELECT * FROM reports ORDER BY id ASC")
     fun getAllReports(): Flow<List<ReportEntity>>
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -71,10 +71,10 @@ interface NezamDao {
     suspend fun deleteAllReports()
     
     // FollowUp Edits
-    @Query("SELECT * FROM specifications ORDER BY CAST(SUBSTR(caseNumber, 1, INSTR(caseNumber, '/') - 1) AS INTEGER) DESC, CAST(SUBSTR(caseNumber, INSTR(caseNumber, '/') + 1) AS INTEGER) ASC")
+    @Query("SELECT * FROM specifications ORDER BY id ASC")
     fun getAllSpecifications(): Flow<List<SpecificationEntity>>
 
-    @Query("SELECT * FROM followup_edits ORDER BY CAST(SUBSTR(caseNumber, 1, INSTR(caseNumber, '/') - 1) AS INTEGER) DESC, CAST(SUBSTR(caseNumber, INSTR(caseNumber, '/') + 1) AS INTEGER) ASC")
+    @Query("SELECT * FROM followup_edits ORDER BY caseNumber ASC")
     fun getAllFollowUpEdits(): Flow<List<FollowUpEditEntity>>
     
     @Query("SELECT * FROM followup_edits WHERE caseNumber = :caseNumber")
