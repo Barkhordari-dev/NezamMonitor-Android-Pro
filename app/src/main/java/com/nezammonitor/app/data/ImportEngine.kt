@@ -254,3 +254,11 @@ data class ExportFollowUpEdit(
     val ownerEdit: String = "", val addressEdit: String = "",
     val ownerMobileEdit: String = ""
 )
+
+data class ExportFeeReceipt(
+    val receiptDate: String = "", val amount: Long = 0L,
+    val relatedEndDatesRaw: String = "", val isAdvance: Boolean = false,
+    val feeSum: Long = 0L, val changes: String = "",
+    val isRecentlyUpdated: Boolean = false,
+    val createdAt: String = "", val updatedAt: String = ""
+)
