@@ -19,16 +19,37 @@ import com.nezammonitor.app.data.FeeEntity
 import com.nezammonitor.app.data.FeeReceiptEntity
 import com.nezammonitor.app.viewmodel.MainViewModel
 
+private fun normalizeDigits(s: String): String = s
+    .replace("۰","0").replace("۱","1").replace("۲","2").replace("۳","3").replace("۴","4")
+    .replace("۵","5").replace("۶","6").replace("۷","7").replace("۸","8").replace("۹","9")
+    .replace("٠","0").replace("١","1").replace("٢","2").replace("٣","3").replace("٤","4")
+    .replace("٥","5").replace("٦","6").replace("٧","7").replace("٨","8").replace("٩","9")
 private fun parseAmount(amount: String): Long {
     if (amount.isBlank()) return 0L
-    val cleaned = amount.replace("ریال","").replace(",","").replace(" ","").trim()
-        .replace("۰","0").replace("۱","1").replace("۲","2").replace("۳","3")
-        .replace("۴","4").replace("۵","5").replace("۶","6").replace("۷","7")
-        .replace("۸","8").replace("۹","9")
-    return cleaned.toLongOrNull() ?: 0L
+    var c = amount.replace("ریال","").replace(",","").replace("٬","").replace("،","").replace(" ","").trim()
+    c = normalizeDigits(c)
+    return c.toLongOrNull() ?: 0L
 }
-private fun formatAmount(amount: Long): String = "%,d".format(amount) + " ریال"
-private fun formatAmountShort(amount: Long): String = "%,d".format(amount)
+private fun formatAmount(amount: Long): String = String.format(java.util.Locale.US, "%,d", amount) + " ریال"
+private fun formatAmountShort(amount: Long): String = String.format(java.util.Locale.US, "%,d", amount)
+private fun formatAmountDisplay(raw: String): String {
+    if (raw.isBlank()) return "۰ ریال"
+    val t2 = raw.trim()
+    var num = t2.replace("ریال","").replace(",","").replace("٬","").replace("،","").replace(" ","").trim()
+    num = normalizeDigits(num)
+    val v = num.toLongOrNull() ?: return raw
+    return String.format(java.util.Locale.US, "%,d", v) + " ریال"
+}
+private fun mappedServiceType(fee: FeeEntity, allOfCase: List<FeeEntity>): String {
+    val st = fee.stage.trim()
+    if (st != "0") return "نظارت"
+    val stage0 = allOfCase.filter { it.stage.trim() == "0" }
+    val order = arrayOf("حسن انجام کار", "نظارت سهم سازمان", "مالیات نظارت سهم سازمان", "بیمه")
+    val sorted = stage0.sortedByDescending { parseAmount(it.amount) }
+    val idx = sorted.indexOfFirst { it.id == fee.id }
+    if (idx == -1) return "بیمه"
+    return if (idx < order.size) order[idx] else order.last()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,14 +85,17 @@ private fun FeesTab(fees: List<FeeEntity>, cases: List<com.nezammonitor.app.data
     var payFilter by remember { mutableStateOf<String?>(null) }
 
     val caseOwnerMap = remember(cases) { cases.associate { it.caseNumber to it.owner } }
+    val feesByCase = remember(fees) { fees.groupBy { it.caseNumber } }
 
-    val filtered = remember(fees, searchQuery, payFilter) {
+    val filtered = remember(fees, searchQuery, payFilter, feesByCase) {
         fees.filter { f ->
             val q = searchQuery.trim()
+            val svc = mappedServiceType(f, feesByCase[f.caseNumber] ?: emptyList())
             val matchSearch = q.isBlank() ||
                 f.caseNumber.contains(q, true) ||
                 (caseOwnerMap[f.caseNumber]?.contains(q, true) == true) ||
                 f.discipline.contains(q, true) ||
+                svc.contains(q, true) ||
                 f.stage.contains(q, true) ||
                 f.payStatus.contains(q, true)
             val matchPay = payFilter == null || f.payStatus.contains(payFilter!!, true)
@@ -90,7 +114,7 @@ private fun FeesTab(fees: List<FeeEntity>, cases: List<com.nezammonitor.app.data
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("جستجو: پرونده / مالک / رشته / مرحله ...", fontSize = 12.sp) },
+            placeholder = { Text("جستجو: پرونده / مالک / رشته / نوع خدمت / مرحله ...", fontSize = 12.sp) },
             singleLine = true
         )
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -102,7 +126,7 @@ private fun FeesTab(fees: List<FeeEntity>, cases: List<com.nezammonitor.app.data
         Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Row(modifier = Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("${filtered.size} ردیف | جمع: ${formatAmountShort(totalAmount)}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("${filtered.size} ردیف | جمع: ${formatAmountShort(totalAmount)} ریال", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 if (selectedIds.isNotEmpty())
                     Text("انتخاب: ${selectedIds.size} | ${formatAmount(selectedTotal)}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 else
@@ -142,13 +166,15 @@ private fun FeesTab(fees: List<FeeEntity>, cases: List<com.nezammonitor.app.data
                                     Text("${fee.discipline} • ${fee.stage}", fontSize = 11.sp)
                                     AssistChip(onClick = {}, label = { Text(fee.payStatus.ifBlank { "—" }, fontSize = 10.sp) }, modifier = Modifier.height(22.dp))
                                 }
-                                if (fee.serviceType.isNotBlank() || fee.amountType.isNotBlank())
-                                    Text("${fee.serviceType} ${if (fee.amountType.isNotBlank()) "(${fee.amountType})" else ""}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                run {
+                                    val svcMapped = mappedServiceType(fee, feesByCase[fee.caseNumber] ?: emptyList())
+                                    Text(if (fee.amountType.isNotBlank()) "$svcMapped (${fee.amountType})" else svcMapped, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.secondary)
+                                }
                                 if (fee.startDate.isNotBlank() || fee.endDate.isNotBlank())
                                     Text("شروع: ${fee.startDate.ifBlank { "—" }}  |  پایان: ${fee.endDate.ifBlank { "—" }}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text(fee.amount.ifBlank { "۰ ریال" }, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                Text(formatAmountDisplay(fee.amount), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                                 if (fee.description.isNotBlank()) Text(fee.description, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                             }
                         }
