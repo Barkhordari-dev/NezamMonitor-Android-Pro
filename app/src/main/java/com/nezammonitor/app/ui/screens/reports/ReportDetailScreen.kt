@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nezammonitor.app.data.SinaEngineerStore
+import com.nezammonitor.app.data.formatSinaLevels
 import com.nezammonitor.app.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +69,7 @@ fun ReportDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             if (reports.isNotEmpty()) {
                 item { Text("گزارش\u200Cها (${reports.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
                 items(reports) { report ->
+                    val sinaRep = remember(report.engineer) { SinaEngineerStore.findByName(context, report.engineer) }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -78,8 +81,25 @@ fun ReportDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 Text("ردیف: ${report.rowNo}", fontSize = 12.sp)
                                 Text("تاریخ: ${report.visitDate}", fontSize = 12.sp)
                             }
-                            Text("مهندس: ${report.engineer}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("مهندس: ${report.engineer}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (sinaRep != null) Text(formatSinaLevels(sinaRep), fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                                }
+                                if (sinaRep?.phone?.isNotBlank() == true) {
+                                    IconButton(onClick = {
+                                        val c = sinaRep.phone.replace(Regex("[^0-9+]"), "")
+                                        try { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$c"))) } catch (_: Exception) {}
+                                    }) { Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary) }
+                                }
+                            }
                             Text("رشته: ${report.discipline}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (sinaRep?.phone?.isNotBlank() == true) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable {
+                                    val c = sinaRep.phone.replace(Regex("[^0-9+]"), "")
+                                    try { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$c"))) } catch (_: Exception) {}
+                                }) { Text(sinaRep.phone, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold); Spacer(modifier = Modifier.width(6.dp)); Icon(Icons.Default.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp)) }
+                            }
                             if (report.ceilingCount.isNotBlank()) {
                                 Text("تعداد سقف: ${report.ceilingCount}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nezammonitor.app.data.SinaEngineerStore
+import com.nezammonitor.app.data.formatSinaLevels
 import com.nezammonitor.app.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +36,7 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             val cleaned = number.replace(Regex("[^0-9+]"), "")
             val intent = Intent(Intent.ACTION_DIAL)
             intent.data = Uri.parse("tel:$cleaned")
-            context.startActivity(intent)
+            try { context.startActivity(intent) } catch (_: Exception) {}
         }
     }
 
@@ -135,23 +137,64 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
 
-            // Engineers
+            // Engineers — با اطلاعات سینا یزد + تماس
             if (engineers.isNotEmpty()) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("مهندسین (${engineers.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(modifier = Modifier.height(8.dp))
+                            Text("اطلاعات تکمیلی از بانک ۵۹۰۲ مهندس سینا یزد", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
                 items(engineers) { eng ->
+                    val sina = remember(eng.name) { SinaEngineerStore.findByName(context, eng.name) }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(eng.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("رشته: ${eng.discipline}", fontSize = 13.sp)
-                            if (eng.role.isNotBlank()) {
-                                Text("نقش: ${eng.role}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(eng.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text("رشته: ${eng.discipline}", fontSize = 13.sp)
+                                    if (eng.role.isNotBlank()) {
+                                        Text("نقش: ${eng.role}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    if (sina != null) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(formatSinaLevels(sina), fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
+                                    } else {
+                                        // fallback: show phone/levels from case data if available
+                                        if (eng.phone.isNotBlank() || eng.designLevel.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            val fb = listOfNotNull(
+                                                if (eng.phone.isNotBlank()) "همراه: ${eng.phone}" else null,
+                                                if (eng.designLevel.isNotBlank()) "طراحی:${eng.designLevel}" else null,
+                                                if (eng.supervisionLevel.isNotBlank()) "نظارت:${eng.supervisionLevel}" else null,
+                                                if (eng.executionLevel.isNotBlank()) "اجرا:${eng.executionLevel}" else null
+                                            ).joinToString(" | ")
+                                            if (fb.isNotBlank()) Text(fb, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+                                // Phone call button — سینا اولویت، بعد فیلد پرونده
+                                val phone = when {
+                                    sina?.phone?.isNotBlank() == true -> sina.phone
+                                    eng.phone.isNotBlank() -> eng.phone
+                                    else -> ""
+                                }
+                                if (phone.isNotBlank()) {
+                                    IconButton(onClick = { dialPhone(phone) }) {
+                                        Icon(Icons.Default.Phone, contentDescription = "تماس با ${eng.name}", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                            if (sina?.phone?.isNotBlank() == true) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { dialPhone(sina.phone) }) {
+                                    Text(sina.phone, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(Icons.Default.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                }
                             }
                         }
                     }
@@ -188,7 +231,7 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
 
-            // Reports
+            // Reports — نام مهندس با اطلاعات سینا
             if (reports.isNotEmpty()) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
@@ -199,6 +242,7 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                 }
                 items(reports) { report ->
+                    val sinaRep = remember(report.engineer) { SinaEngineerStore.findByName(context, report.engineer) }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(
@@ -208,8 +252,23 @@ fun CaseDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 Text("${report.reportType}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 Text("مرحله ${report.stage}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                             }
-                            Text("مهندس: ${report.engineer} | رشته: ${report.discipline}", fontSize = 12.sp)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("مهندس: ${report.engineer} | رشته: ${report.discipline}", fontSize = 12.sp)
+                                    if (sinaRep != null) {
+                                        Text(formatSinaLevels(sinaRep), fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                                    }
+                                }
+                                if (sinaRep?.phone?.isNotBlank() == true) {
+                                    IconButton(onClick = { dialPhone(sinaRep.phone) }) {
+                                        Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
                             Text("تاریخ: ${report.visitDate}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (sinaRep?.phone?.isNotBlank() == true) {
+                                Text(sinaRep.phone, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { dialPhone(sinaRep.phone) })
+                            }
                         }
                     }
                 }

@@ -3,6 +3,8 @@ package com.nezammonitor.app.ui.screens.reports
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import com.nezammonitor.app.data.SinaEngineerStore
+import com.nezammonitor.app.data.formatSinaLevels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items

@@ -3,6 +3,8 @@ package com.nezammonitor.app.ui.screens.engineers
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nezammonitor.app.data.SinaEngineerStore
+import com.nezammonitor.app.data.formatSinaLevels
 import com.nezammonitor.app.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,12 +93,29 @@ fun EngineersScreen(viewModel: MainViewModel, onCaseClick: (String) -> Unit) {
                             }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        // Preview engineers
-                        caseEngineers.take(3).forEach { eng ->
-                            Text("• ${eng.name} (${eng.discipline})", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        caseEngineers.take(4).forEach { eng ->
+                            val sina = remember(eng.name) { SinaEngineerStore.findByName(context, eng.name) }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("• ${eng.name} (${eng.discipline})", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (sina != null) Text("  ${formatSinaLevels(sina)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                                }
+                                val phone = sina?.phone?.ifBlank { null } ?: eng.phone.ifBlank { null }
+                                if (!phone.isNullOrBlank()) {
+                                    Icon(
+                                        Icons.Default.Phone,
+                                        contentDescription = "تماس",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp).clickable {
+                                            val c = phone.replace(Regex("[^0-9+]"), "")
+                                            try { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$c"))) } catch (_: Exception) {}
+                                        }
+                                    )
+                                }
+                            }
                         }
-                        if (caseEngineers.size > 3) {
-                            Text("+ ${caseEngineers.size - 3} مهندس دیگر", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (caseEngineers.size > 4) {
+                            Text("+ ${caseEngineers.size - 4} مهندس دیگر", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

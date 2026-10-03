@@ -26,6 +26,7 @@ import com.nezammonitor.app.ui.screens.fees.FeesScreen
 import com.nezammonitor.app.ui.screens.followup.FollowUpScreen
 import com.nezammonitor.app.ui.screens.home.HomeScreen
 import com.nezammonitor.app.ui.screens.reports.ReportsScreen
+import com.nezammonitor.app.ui.screens.receipts.ReceiptsScreen
 import com.nezammonitor.app.ui.screens.settings.SettingsScreen
 import com.nezammonitor.app.ui.screens.export.ExportScreen
 import com.nezammonitor.app.ui.screens.update.UpdateScreen
@@ -201,6 +202,9 @@ fun NezamMonitorApp(viewModel: MainViewModel) {
                 }
                 composable(Screen.FollowUp.route) {
                     FollowUpScreen(viewModel = viewModel)
+                }
+                composable(Screen.Receipts.route) {
+                    ReceiptsScreen(viewModel = viewModel)
                 }
                 composable(Screen.ReportGenerator.route) {
                     ReportGeneratorScreen(viewModel = viewModel, onBack = { navController.popBackStack() })

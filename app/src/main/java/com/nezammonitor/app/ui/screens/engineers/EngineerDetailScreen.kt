@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nezammonitor.app.data.SinaEngineerStore
+import com.nezammonitor.app.data.formatSinaLevels
 import com.nezammonitor.app.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,14 +83,42 @@ fun EngineerDetailScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Text("مهندسین (${engineers.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp))
                 }
                 items(engineers) { eng ->
+                    val sina = remember(eng.name) { SinaEngineerStore.findByName(context, eng.name) }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text(eng.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("رشته: ${eng.discipline}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                if (eng.role.isNotBlank()) {
-                                    Text("نقش: ${eng.role}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(eng.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Text("رشته: ${eng.discipline}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (eng.role.isNotBlank()) Text("نقش: ${eng.role}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (sina != null) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(formatSinaLevels(sina), fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
+                                    } else if (eng.phone.isNotBlank() || eng.designLevel.isNotBlank()) {
+                                        val fb = listOfNotNull(
+                                            if (eng.phone.isNotBlank()) "همراه: ${eng.phone}" else null,
+                                            if (eng.designLevel.isNotBlank()) "طراحی:${eng.designLevel}" else null,
+                                            if (eng.supervisionLevel.isNotBlank()) "نظارت:${eng.supervisionLevel}" else null,
+                                            if (eng.executionLevel.isNotBlank()) "اجرا:${eng.executionLevel}" else null
+                                        ).joinToString(" | ")
+                                        if (fb.isNotBlank()) { Spacer(modifier = Modifier.height(4.dp)); Text(fb, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    }
+                                }
+                                val phone = when { sina?.phone?.isNotBlank() == true -> sina.phone; eng.phone.isNotBlank() -> eng.phone; else -> "" }
+                                if (phone.isNotBlank()) {
+                                    IconButton(onClick = {
+                                        val c = phone.replace(Regex("[^0-9+]"), "")
+                                        try { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$c"))) } catch (_: Exception) {}
+                                    }) { Icon(Icons.Default.Phone, contentDescription = "تماس", tint = MaterialTheme.colorScheme.primary) }
+                                }
+                            }
+                            if (sina?.phone?.isNotBlank() == true) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable {
+                                    val c = sina.phone.replace(Regex("[^0-9+]"), "")
+                                    try { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$c"))) } catch (_: Exception) {}
+                                }) {
+                                    Text(sina.phone, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(6.dp)); Icon(Icons.Default.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
