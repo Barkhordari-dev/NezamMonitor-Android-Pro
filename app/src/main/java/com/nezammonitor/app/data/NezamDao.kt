@@ -101,4 +101,14 @@ interface NezamDao {
     
     @Query("SELECT COUNT(*) FROM reports")
     suspend fun getReportsCount(): Int
+
+    // FeeReceipts v3 — دریافتی‌ها
+    @Query("SELECT * FROM fee_receipts ORDER BY receiptDate DESC, id DESC")
+    fun getAllFeeReceipts(): kotlinx.coroutines.flow.Flow<List<FeeReceiptEntity>>
+    @Query("SELECT * FROM fee_receipts WHERE id = :id")
+    suspend fun getFeeReceipt(id: Long): FeeReceiptEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFeeReceipts(list: List<FeeReceiptEntity>)
+    @Query("DELETE FROM fee_receipts")
+    suspend fun deleteAllFeeReceipts()
 }

@@ -50,6 +50,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _specifications = MutableStateFlow<List<SpecificationEntity>>(emptyList())
     val specifications: StateFlow<List<SpecificationEntity>> = _specifications.asStateFlow()
 
+    // FeeReceipts v3 — دریافتی‌ها
+    private val _feeReceipts = MutableStateFlow<List<FeeReceiptEntity>>(emptyList())
+    val feeReceipts: StateFlow<List<FeeReceiptEntity>> = _feeReceipts.asStateFlow()
+
     // Import
     private val _importResult = MutableStateFlow<ImportResult?>(null)
     val importResult: StateFlow<ImportResult?> = _importResult.asStateFlow()
@@ -79,6 +83,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             dao.getAllSpecifications().distinctUntilChanged().collect { _specifications.value = it }
+        }
+        viewModelScope.launch {
+            dao.getAllFeeReceipts().distinctUntilChanged().collect { _feeReceipts.value = it }
         }
     }
 

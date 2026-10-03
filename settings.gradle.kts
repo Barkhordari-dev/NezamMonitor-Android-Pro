@@ -19,5 +19,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "NezamMonitor"
+rootProject.name = "NezamMonitor Pro"
 include(":app")

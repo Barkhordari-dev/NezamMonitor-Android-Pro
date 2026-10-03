@@ -15,7 +15,8 @@ data class ImportResult(
     val casesCount: Int = 0,
     val engineersCount: Int = 0,
     val feesCount: Int = 0,
-    val reportsCount: Int = 0
+    val reportsCount: Int = 0,
+    val receiptsCount: Int = 0
 )
 
 class ImportEngine(private val context: Context) {
@@ -79,6 +80,7 @@ class ImportEngine(private val context: Context) {
                 dao.deleteAllEngineers()
                 dao.deleteAllSpecifications()
                 dao.deleteAllCases()
+                try { dao.deleteAllFeeReceipts() } catch (_: Exception) {}
                 
                 val cases = exportData.cases.map { ec ->
                     CaseEntity(
@@ -86,7 +88,21 @@ class ImportEngine(private val context: Context) {
                         owner = ec.owner, ownerMobile = ec.ownerMobile,
                         responsibility = ec.responsibility, capacityDate = ec.capacityDate,
                         office = ec.office, reportDate1 = ec.reportDate1,
-                        reportDate2 = ec.reportDate2, reportDate3 = ec.reportDate3
+                        reportDate2 = ec.reportDate2, reportDate3 = ec.reportDate3,
+                        ownerFather = ec.ownerFather, ownerNationalCode = ec.ownerNationalCode,
+                        ownerAddress = ec.ownerAddress, ownerZip = ec.ownerZip,
+                        ownerTel = ec.ownerTel, ownerBirthLoc = ec.ownerBirthLoc,
+                        permitNumber = ec.permitNumber, permitDate = ec.permitDate,
+                        renovationCode = ec.renovationCode, address = ec.address,
+                        blockNumber = ec.blockNumber, landArea = ec.landArea,
+                        municipalArea = ec.municipalArea, effectiveArea = ec.effectiveArea,
+                        floors = ec.floors, units = ec.units,
+                        buildingGroup = ec.buildingGroup, structureType = ec.structureType,
+                        usageType = ec.usageType, planZone = ec.planZone,
+                        issuer = ec.issuer, stateTitle = ec.stateTitle,
+                        workType = ec.workType, discipline = ec.discipline,
+                        unitTitle = ec.unitTitle, orderPart = ec.orderPart,
+                        executionDate = ec.executionDate, dbId = ec.dbId
                     )
                 }
                 dao.insertCases(cases)
@@ -112,7 +128,7 @@ class ImportEngine(private val context: Context) {
                 
                 val engineers = exportData.cases.flatMap { ec ->
                     ec.engineers.map { ee ->
-                        EngineerEntity(caseNumber = ec.caseNumber, discipline = ee.discipline, name = ee.name, role = ee.role)
+                        EngineerEntity(caseNumber = ec.caseNumber, discipline = ee.discipline, name = ee.name, role = ee.role, phone = ee.phone, designLevel = ee.designLevel, supervisionLevel = ee.supervisionLevel, executionLevel = ee.executionLevel)
                     }
                 }
                 dao.insertEngineers(engineers)
@@ -153,17 +169,23 @@ class ImportEngine(private val context: Context) {
                     )
                 }
                 edits.forEach { dao.insertFollowUpEdit(it) }
+                // FeeReceipts (اختیاری)
+                val feeReceiptsRaw = exportData.feeReceipts
+                if (feeReceiptsRaw.isNotEmpty()) {
+                    val receipts = feeReceiptsRaw.map { fr ->
+                        FeeReceiptEntity(receiptDate = fr.receiptDate, amount = fr.amount, relatedEndDatesRaw = fr.relatedEndDatesRaw, isAdvance = fr.isAdvance, feeSum = fr.feeSum, changes = fr.changes, isRecentlyUpdated = fr.isRecentlyUpdated, createdAt = fr.createdAt, updatedAt = fr.updatedAt)
+                    }
+                    dao.insertFeeReceipts(receipts)
+                }
             }
             
             val casesCount = exportData.cases.size
             val engineersCount = exportData.cases.sumOf { it.engineers.size }
             val feesCount = exportData.cases.sumOf { it.fees.size }
             val reportsCount = exportData.cases.sumOf { it.reports.size }
-            val counts = ImportResult(
-                true,
-                "$casesCount پرونده، $engineersCount مهندس، $feesCount حق\u200Cالزحمه، $reportsCount گزارش وارد شد",
-                casesCount, engineersCount, feesCount, reportsCount
-            )
+            val receiptsCount = exportData.feeReceipts.size
+            val msg = if (receiptsCount > 0) "$casesCount پرونده، $engineersCount مهندس، $feesCount حق\u200Cالزحمه، $reportsCount گزارش، $receiptsCount دریافتی وارد شد" else "$casesCount پرونده، $engineersCount مهندس، $feesCount حق\u200Cالزحمه، $reportsCount گزارش وارد شد"
+            val counts = ImportResult(true, msg, casesCount, engineersCount, feesCount, reportsCount, receiptsCount)
             
             tempFile.delete()
             tempDir.deleteRecursively()
@@ -183,13 +205,15 @@ data class ManifestData(
     val exportedEntities: List<String> = emptyList()
 )
 
-data class ExportData(val cases: List<ExportCase> = emptyList())
+data class ExportData(val cases: List<ExportCase> = emptyList(), val feeReceipts: List<ExportFeeReceipt> = emptyList())
 
 data class ExportCase(
     val caseNumber: String = "", val serial: String = "", val owner: String = "",
     val ownerMobile: String = "", val responsibility: String = "",
     val capacityDate: String = "", val office: String = "",
     val reportDate1: String = "", val reportDate2: String = "", val reportDate3: String = "",
+    val ownerFather: String = "", val ownerNationalCode: String = "", val ownerAddress: String = "", val ownerZip: String = "", val ownerTel: String = "", val ownerBirthLoc: String = "",
+    val permitNumber: String = "", val permitDate: String = "", val renovationCode: String = "", val address: String = "", val blockNumber: String = "", val landArea: String = "", val municipalArea: String = "", val effectiveArea: String = "", val floors: String = "", val units: String = "", val buildingGroup: String = "", val structureType: String = "", val usageType: String = "", val planZone: String = "", val issuer: String = "", val stateTitle: String = "", val workType: String = "", val discipline: String = "", val unitTitle: String = "", val orderPart: String = "", val executionDate: String = "", val dbId: String = "",
     val specification: ExportSpecification? = null,
     val engineers: List<ExportEngineer> = emptyList(),
     val fees: List<ExportFee> = emptyList(),
@@ -210,7 +234,7 @@ data class ExportSpecification(
     val usageType: String = ""
 )
 
-data class ExportEngineer(val discipline: String = "", val name: String = "", val role: String = "")
+data class ExportEngineer(val discipline: String = "", val name: String = "", val role: String = "", val phone: String = "", val designLevel: String = "", val supervisionLevel: String = "", val executionLevel: String = "")
 
 data class ExportFee(
     val discipline: String = "", val serviceType: String = "", val stage: String = "",

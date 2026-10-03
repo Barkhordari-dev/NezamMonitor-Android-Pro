@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [CaseEntity::class, SpecificationEntity::class, EngineerEntity::class, FeeEntity::class, ReportEntity::class, FollowUpEditEntity::class],
-    version = 2,
+    entities = [CaseEntity::class, SpecificationEntity::class, EngineerEntity::class, FeeEntity::class, ReportEntity::class, FollowUpEditEntity::class, FeeReceiptEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class NezamDatabase : RoomDatabase() {
@@ -53,6 +53,16 @@ abstract class NezamDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                try { db.execSQL("CREATE TABLE IF NOT EXISTS `fee_receipts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `receiptDate` TEXT NOT NULL DEFAULT '', `amount` INTEGER NOT NULL DEFAULT 0, `relatedEndDatesRaw` TEXT NOT NULL DEFAULT '', `isAdvance` INTEGER NOT NULL DEFAULT 0, `feeSum` INTEGER NOT NULL DEFAULT 0, `changes` TEXT NOT NULL DEFAULT '', `isRecentlyUpdated` INTEGER NOT NULL DEFAULT 0, `createdAt` TEXT NOT NULL DEFAULT '', `updatedAt` TEXT NOT NULL DEFAULT '')") } catch (_: Exception) {}
+                try { db.execSQL("ALTER TABLE engineers ADD COLUMN phone TEXT DEFAULT ''") } catch (_: Exception) {}
+                try { db.execSQL("ALTER TABLE engineers ADD COLUMN designLevel TEXT DEFAULT ''") } catch (_: Exception) {}
+                try { db.execSQL("ALTER TABLE engineers ADD COLUMN supervisionLevel TEXT DEFAULT ''") } catch (_: Exception) {}
+                try { db.execSQL("ALTER TABLE engineers ADD COLUMN executionLevel TEXT DEFAULT ''") } catch (_: Exception) {}
+            }
+        }
+
         fun getDatabase(context: Context): NezamDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -60,7 +70,7 @@ abstract class NezamDatabase : RoomDatabase() {
                     NezamDatabase::class.java,
                     "nezam_monitor.db"
                 )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

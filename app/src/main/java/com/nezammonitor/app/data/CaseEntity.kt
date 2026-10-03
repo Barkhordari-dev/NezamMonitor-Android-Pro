@@ -78,7 +78,11 @@ data class EngineerEntity(
     val caseNumber: String = "",
     val discipline: String = "",
     val name: String = "",
-    val role: String = ""
+    val role: String = "",
+    val phone: String = "",
+    val designLevel: String = "",
+    val supervisionLevel: String = "",
+    val executionLevel: String = ""
 )
 
 @Entity(tableName = "fees")
@@ -113,6 +117,21 @@ data class ReportEntity(
 )
 
 @Entity(tableName = "followup_edits")
+// v2 — دریافتی‌ها (همگام با ویندوز)
+@Entity(tableName = "fee_receipts")
+data class FeeReceiptEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val receiptDate: String = "",
+    val amount: Long = 0L,
+    val relatedEndDatesRaw: String = "",
+    val isAdvance: Boolean = false,
+    val feeSum: Long = 0L,
+    val changes: String = "",
+    val isRecentlyUpdated: Boolean = false,
+    val createdAt: String = "",
+    val updatedAt: String = ""
+)
+
 data class FollowUpEditEntity(
     @PrimaryKey val caseNumber: String = "",
     val description: String = "",
