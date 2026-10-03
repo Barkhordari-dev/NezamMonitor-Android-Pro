@@ -116,8 +116,6 @@ data class ReportEntity(
     val hasFile: Boolean = false
 )
 
-@Entity(tableName = "followup_edits")
-// v2 — دریافتی‌ها (همگام با ویندوز)
 @Entity(tableName = "fee_receipts")
 data class FeeReceiptEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -132,6 +130,7 @@ data class FeeReceiptEntity(
     val updatedAt: String = ""
 )
 
+@Entity(tableName = "followup_edits")
 data class FollowUpEditEntity(
     @PrimaryKey val caseNumber: String = "",
     val description: String = "",
